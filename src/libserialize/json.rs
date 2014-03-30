@@ -1444,17 +1444,23 @@ impl ::Decoder for Decoder {
         self.stack.pop().unwrap();
         value
     }
-
+        
     fn read_struct_field<T>(&mut self,
                             name: &str,
                             idx: uint,
+                            optional: bool,
                             f: |&mut Decoder| -> T)
                             -> T {
         debug!("read_struct_field(name={}, idx={})", name, idx);
         match self.stack.pop().unwrap() {
             Object(mut obj) => {
                 let value = match obj.pop(&name.to_owned()) {
-                    None => self.missing_field(name, obj),
+                    None => if optional {
+                            self.stack.push(Null);
+                            f(self)
+                    }else{
+                            self.missing_field(name, obj)
+                    },
                     Some(json) => {
                         self.stack.push(json);
                         f(self)

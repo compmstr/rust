@@ -503,10 +503,13 @@ pub mod reader {
         fn read_struct_field<T>(&mut self,
                                 name: &str,
                                 idx: uint,
+                                optional: bool,
                                 f: |&mut Decoder<'doc>| -> T)
                                 -> T {
             debug!("read_struct_field(name={}, idx={})", name, idx);
-            self._check_label(name);
+            if !optional {
+                self._check_label(name);
+            }
             f(self)
         }
 

@@ -77,10 +77,11 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                               trait_span,
                                               substr.type_ident,
                                               summary,
-                                              |cx, span, name, field| {
+                                              |cx, span, name, field, optional| {
                 cx.expr_method_call(span, blkdecoder, read_struct_field,
                                     vec!(cx.expr_str(span, name),
                                       cx.expr_uint(span, field),
+                                      cx.expr_bool(span, optional),
                                       lambdadecode))
             });
             cx.expr_method_call(trait_span,
@@ -106,7 +107,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                    v_span,
                                                    name,
                                                    parts,
-                                                   |cx, span, _, field| {
+                                                   |cx, span, _, field, _| {
                     let idx = cx.expr_uint(span, field);
                     cx.expr_method_call(span, blkdecoder, rvariant_arg,
                                         vec!(idx, lambdadecode))
@@ -144,7 +145,7 @@ fn decode_static_fields(cx: &mut ExtCtxt,
                         trait_span: Span,
                         outer_pat_ident: Ident,
                         fields: &StaticFields,
-                        getarg: |&mut ExtCtxt, Span, InternedString, uint| -> @Expr)
+                        getarg: |&mut ExtCtxt, Span, InternedString, uint, bool| -> @Expr)
                         -> @Expr {
     match *fields {
         Unnamed(ref fields) => {
@@ -155,7 +156,7 @@ fn decode_static_fields(cx: &mut ExtCtxt,
                     getarg(cx, span,
                            token::intern_and_get_ident(format!("_field{}",
                                                                i)),
-                           i)
+                           i, false)
                 }).collect();
 
                 cx.expr_call_ident(trait_span, outer_pat_ident, fields)
@@ -164,7 +165,12 @@ fn decode_static_fields(cx: &mut ExtCtxt,
         Named(ref fields) => {
             // use the field's span to get nicer error messages.
             let fields = fields.iter().enumerate().map(|(i, &(name, span))| {
-                let arg = getarg(cx, span, token::get_ident(name), i);
+                let field_ty = cx.ty_ident(span, name);
+                println!("{:?}", field_ty);
+                let field_path = cx.path_ident(span, name);
+                println!("{:?}", field_path);
+                //If the type is an option, let getarg be optional
+                let arg = getarg(cx, span, token::get_ident(name), i, false);
                 cx.field_imm(span, name, arg)
             }).collect();
             cx.expr_struct_ident(trait_span, outer_pat_ident, fields)

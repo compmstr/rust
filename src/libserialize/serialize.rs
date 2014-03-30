@@ -128,6 +128,7 @@ pub trait Decoder {
     fn read_struct_field<T>(&mut self,
                             f_name: &str,
                             f_idx: uint,
+                            optional: bool,
                             f: |&mut Self| -> T)
                             -> T;
 
