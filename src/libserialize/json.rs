@@ -1239,7 +1239,7 @@ impl<T : Iterator<char>> Parser<T> {
         while !self.eof() {
             self.parse_whitespace();
 
-            if !self.ch_is('"') {
+            if !self.ch_is('\"') {
                 return self.error(~"key must be a string");
             }
 
@@ -1473,7 +1473,14 @@ impl ::Decoder<Error> for Decoder {
         let mut obj = try!(expect!(self.pop(), Object));
 
         let value = match obj.pop(&name.to_owned()) {
-            None => return Err(MissingFieldError(name.to_owned())),
+            None => {
+                //For optional values, check if Null parses
+                self.stack.push(Null);
+                match f(self){
+                    Ok(res) => res,
+                    Err(_) => return Err(MissingFieldError(name.to_owned()))
+                }
+            },
             Some(json) => {
                 self.stack.push(json);
                 try!(f(self))
@@ -1770,6 +1777,12 @@ mod tests {
     #[deriving(Eq, Encodable, Decodable, Show)]
     struct Outer {
         inner: ~[Inner],
+    }
+
+    #[deriving(Eq, Encodable, Decodable, Show)]
+    struct OptTest{
+        req: ~str,
+        opt: Option<uint>,
     }
 
     fn mk_object(items: &[(~str, Json)]) -> Json {
@@ -2312,6 +2325,33 @@ mod tests {
                 ]
             }
         );
+        let s = ~"{\"req\": \"foo\"}";
+        let mut decoder = Decoder::new(from_str(s).unwrap());
+        let v: OptTest = Decodable::decode(&mut decoder).unwrap();
+        assert_eq!(
+            v,
+            OptTest{
+                req: ~"foo",
+                opt: None,
+            })
+
+        let s = ~"{\"req\": \"foo\", \"opt\": 75}";
+        let mut decoder = Decoder::new(from_str(s).unwrap());
+        let v: OptTest = Decodable::decode(&mut decoder).unwrap();
+        assert_eq!(
+            v,
+            OptTest{
+                req: ~"foo",
+                opt: 75,
+            })
+
+        let s = ~"{\"opt\": 50}";
+        let mut decoder = Decoder::new(from_str(s).unwrap());
+        let v: Result<OptTest, _> = Decodable::decode(&mut decoder);
+        match v {
+            Ok(_) => {fail!("Required field not found in structure")},
+            Err(_) => {}
+        }
     }
 
     #[test]
