@@ -128,8 +128,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
 
-            clean::ViewItemItem(..) |
-            clean::ModuleItem(..) => {
+            clean::ViewItemItem(..) => {
                 if i.visibility != Some(ast::Public) {
                     return None
                 }
@@ -140,6 +139,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                     return None;
                 }
             }
+
+            // handled below
+            clean::ModuleItem(..) => {}
 
             // trait impls for private items should be stripped
             clean::ImplItem(clean::Impl{ for_: clean::ResolvedPath{ id: ref for_id, .. }, .. }) => {
@@ -312,14 +314,14 @@ pub fn unindent(s: &str) -> ~str {
 
     if lines.len() >= 1 {
         let mut unindented = vec!( lines.get(0).trim() );
-        unindented.push_all(lines.tail().map(|&line| {
+        unindented.push_all(lines.tail().iter().map(|&line| {
             if line.is_whitespace() {
                 line
             } else {
                 assert!(line.len() >= min_indent);
                 line.slice_from(min_indent)
             }
-        }));
+        }).collect::<Vec<_>>().as_slice());
         unindented.connect("\n")
     } else {
         s.to_owned()

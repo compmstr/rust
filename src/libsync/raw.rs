@@ -192,7 +192,7 @@ impl Sem<Vec<WaitQueue>> {
     pub fn access_cond<'a>(&'a self) -> SemCondGuard<'a> {
         SemCondGuard {
             guard: self.access(),
-            cvar: Condvar { sem: self, order: Nothing, nopod: marker::NoPod },
+            cvar: Condvar { sem: self, order: Nothing, nocopy: marker::NoCopy },
         }
     }
 }
@@ -218,7 +218,7 @@ pub struct Condvar<'a> {
     // See the comment in write_cond for more detail.
     priv order: ReacquireOrderLock<'a>,
     // Make sure condvars are non-copyable.
-    priv nopod: marker::NoPod,
+    priv nocopy: marker::NoCopy,
 }
 
 impl<'a> Condvar<'a> {
@@ -565,7 +565,7 @@ impl RWLock {
             cond: Condvar {
                 sem: &self.access_lock,
                 order: Just(&self.order_lock),
-                nopod: marker::NoPod,
+                nocopy: marker::NoCopy,
             }
         }
     }
@@ -836,7 +836,7 @@ mod tests {
         let m = Arc::new(Mutex::new());
         let m2 = m.clone();
 
-        let result: result::Result<(), ~Any> = task::try(proc() {
+        let result: result::Result<(), ~Any:Send> = task::try(proc() {
             let _lock = m2.lock();
             fail!();
         });
@@ -1076,7 +1076,7 @@ mod tests {
         let x = Arc::new(RWLock::new());
         let x2 = x.clone();
 
-        let result: result::Result<(), ~Any> = task::try(proc() {
+        let result: result::Result<(), ~Any:Send> = task::try(proc() {
             lock_rwlock_in_mode(&x2, mode1, || {
                 fail!();
             })

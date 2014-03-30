@@ -98,15 +98,15 @@ pub type Name = u32;
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
 
-impl<S: Encoder> Encodable<S> for Ident {
-    fn encode(&self, s: &mut S) {
-        s.emit_str(token::get_ident(*self).get());
+impl<S: Encoder<E>, E> Encodable<S, E> for Ident {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
+        s.emit_str(token::get_ident(*self).get())
     }
 }
 
-impl<D:Decoder> Decodable<D> for Ident {
-    fn decode(d: &mut D) -> Ident {
-        str_to_ident(d.read_str())
+impl<D:Decoder<E>, E> Decodable<D, E> for Ident {
+    fn decode(d: &mut D) -> Result<Ident, E> {
+        Ok(str_to_ident(try!(d.read_str())))
     }
 }
 
@@ -564,14 +564,16 @@ pub enum TokenTree {
     TTTok(Span, ::parse::token::Token),
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
-    TTDelim(@Vec<TokenTree> ),
+    // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
+    TTDelim(Rc<Vec<TokenTree>>),
 
     // These only make sense for right-hand-sides of MBE macros:
 
     // a kleene-style repetition sequence with a span, a TTForest,
     // an optional separator, and a boolean where true indicates
     // zero or more (..), and false indicates one or more (+).
-    TTSeq(Span, @Vec<TokenTree> , Option<::parse::token::Token>, bool),
+    // FIXME(eddyb) #6308 Use Rc<[TokenTree]> after DST.
+    TTSeq(Span, Rc<Vec<TokenTree>>, Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.
     TTNonterminal(Span, Ident)
@@ -1080,7 +1082,16 @@ pub type StructField = Spanned<StructField_>;
 #[deriving(Clone, Eq, TotalEq, Encodable, Decodable, Hash)]
 pub enum StructFieldKind {
     NamedField(Ident, Visibility),
-    UnnamedField // element of a tuple-like struct
+    UnnamedField(Visibility), // element of a tuple-like struct
+}
+
+impl StructFieldKind {
+    pub fn is_unnamed(&self) -> bool {
+        match *self {
+            UnnamedField(..) => true,
+            NamedField(..) => false,
+        }
+    }
 }
 
 #[deriving(Eq, TotalEq, Encodable, Decodable, Hash)]
@@ -1159,6 +1170,7 @@ mod test {
     // are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
+        use std::io;
         let e = Crate {
             module: Mod {view_items: Vec::new(), items: Vec::new()},
             attrs: Vec::new(),
@@ -1170,6 +1182,6 @@ mod test {
             },
         };
         // doesn't matter which encoder we use....
-        let _f = &e as &serialize::Encodable<json::Encoder>;
+        let _f = &e as &serialize::Encodable<json::Encoder, io::IoError>;
     }
 }

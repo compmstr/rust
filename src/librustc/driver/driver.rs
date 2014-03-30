@@ -168,6 +168,7 @@ impl Input {
     }
 }
 
+
 pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     -> ast::Crate {
     let krate = time(sess.time_passes(), "parsing", (), |_| {
@@ -187,7 +188,8 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     if sess.opts.debugging_opts & session::AST_JSON_NOEXPAND != 0 {
         let mut stdout = io::BufferedWriter::new(io::stdout());
         let mut json = json::PrettyEncoder::new(&mut stdout);
-        krate.encode(&mut json);
+        // unwrapping so IoError isn't ignored
+        krate.encode(&mut json).unwrap();
     }
 
     if sess.show_span() {
@@ -262,7 +264,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     if sess.opts.debugging_opts & session::AST_JSON != 0 {
         let mut stdout = io::BufferedWriter::new(io::stdout());
         let mut json = json::PrettyEncoder::new(&mut stdout);
-        krate.encode(&mut json);
+        // unwrapping so IoError isn't ignored
+        krate.encode(&mut json).unwrap();
     }
 
     (krate, map)
@@ -800,7 +803,7 @@ pub fn host_triple() -> ~str {
     // Instead of grabbing the host triple (for the current host), we grab (at
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
-    (env!("CFG_COMPILER")).to_owned()
+    (env!("CFG_COMPILER_HOST_TRIPLE")).to_owned()
 }
 
 pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
@@ -940,9 +943,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
         NoDebugInfo
     };
 
-    let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
+    let addl_lib_search_paths = matches.opt_strs("L").iter().map(|s| {
         Path::new(s.as_slice())
-    }).move_iter().collect();
+    }).collect();
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg").move_iter().collect());
     let test = matches.opt_present("test");

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use syntax::ast;
 use syntax::codemap::{Span};
@@ -67,7 +67,7 @@ pub fn indenter() -> _indenter {
 pub fn field_expr(f: ast::Field) -> @ast::Expr { return f.expr; }
 
 pub fn field_exprs(fields: Vec<ast::Field> ) -> Vec<@ast::Expr> {
-    fields.map(|f| f.expr)
+    fields.move_iter().map(|f| f.expr).collect()
 }
 
 struct LoopQueryVisitor<'a> {

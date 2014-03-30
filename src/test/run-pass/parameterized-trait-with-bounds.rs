@@ -8,13 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// this is the rust entry point that we're going to call.
-int foo(int argc, char *argv[]);
+#[allow(dead_code)];
 
-extern void (*set_crate_map)(void *map);
-extern int _rust_crate_map_toplevel;
+trait A<T> {}
+trait B<T, U> {}
+trait C<'a, U> {}
 
-int main(int argc, char *argv[]) {
-  set_crate_map(&_rust_crate_map_toplevel);
-  return foo(argc, argv);
+mod foo {
+    pub trait D<'a, T> {}
 }
+
+fn foo1<T>(_: &A<T>: Send) {}
+fn foo2<T>(_: ~A<T>: Send + Share) {}
+fn foo3<T>(_: ~B<int, uint>: 'static) {}
+fn foo4<'a, T>(_: ~C<'a, T>: 'static + Send) {}
+fn foo5<'a, T>(_: ~foo::D<'a, T>: 'static + Send) {}
+
+pub fn main() {}

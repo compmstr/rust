@@ -99,7 +99,7 @@ There are a number of free functions that create or take vectors, for example:
 
 */
 
-#[warn(non_camel_case_types)];
+#![warn(non_camel_case_types)]
 
 use cast;
 use cast::transmute;
@@ -347,16 +347,6 @@ pub fn append_one<T>(lhs: ~[T], x: T) -> ~[T] {
 }
 
 // Functional utilities
-
-/**
- * Apply a function to each element of a vector and return a concatenation
- * of each result vector
- */
-pub fn flat_map<T, U>(v: &[T], f: |t: &T| -> ~[U]) -> ~[U] {
-    let mut result = ~[];
-    for elem in v.iter() { result.push_all_move(f(elem)); }
-    result
-}
 
 #[allow(missing_doc)]
 pub trait VectorVector<T> {
@@ -902,11 +892,7 @@ pub trait ImmutableVector<'a, T> {
     fn initn(&self, n: uint) -> &'a [T];
     /// Returns the last element of a vector, or `None` if it is empty.
     fn last(&self) -> Option<&'a T>;
-    /**
-     * Apply a function to each element of a vector and return a concatenation
-     * of each result vector
-     */
-    fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U];
+
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
     unsafe fn unsafe_ref(self, index: uint) -> &'a T;
@@ -934,11 +920,6 @@ pub trait ImmutableVector<'a, T> {
      * not found.
      */
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint>;
-
-    /// Deprecated, use iterators where possible
-    /// (`self.iter().map(f)`). Apply a function to each element
-    /// of a vector and return the results.
-    fn map<U>(&self, |t: &T| -> U) -> ~[U];
 
     /**
      * Returns a mutable reference to the first element in this slice
@@ -1095,11 +1076,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U] {
-        flat_map(*self, f)
-    }
-
-    #[inline]
     unsafe fn unsafe_ref(self, index: uint) -> &'a T {
         transmute(self.repr().data.offset(index as int))
     }
@@ -1127,10 +1103,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             lim >>= 1;
         }
         return None;
-    }
-
-    fn map<U>(&self, f: |t: &T| -> U) -> ~[U] {
-        self.iter().map(f).collect()
     }
 
     fn shift_ref(&mut self) -> Option<&'a T> {
@@ -2304,12 +2276,12 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
                 MutItems{ptr: p,
                          end: (p as uint + self.len()) as *mut T,
                          marker: marker::ContravariantLifetime::<'a>,
-                         marker2: marker::NoPod}
+                         marker2: marker::NoCopy}
             } else {
                 MutItems{ptr: p,
                          end: p.offset(self.len() as int),
                          marker: marker::ContravariantLifetime::<'a>,
-                         marker2: marker::NoPod}
+                         marker2: marker::NoCopy}
             }
         }
     }
@@ -2670,7 +2642,7 @@ pub struct MutItems<'a, T> {
     priv ptr: *mut T,
     priv end: *mut T,
     priv marker: marker::ContravariantLifetime<'a>,
-    priv marker2: marker::NoPod
+    priv marker2: marker::NoCopy
 }
 
 macro_rules! iterator {
@@ -2919,10 +2891,10 @@ impl<T> Drop for MoveItems<T> {
 pub type RevMoveItems<T> = Rev<MoveItems<T>>;
 
 impl<A> FromIterator<A> for ~[A] {
-    fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
+    fn from_iterator<T: Iterator<A>>(mut iterator: T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
-        for x in *iterator {
+        for x in iterator {
             xs.push(x);
         }
         xs
@@ -2930,11 +2902,11 @@ impl<A> FromIterator<A> for ~[A] {
 }
 
 impl<A> Extendable<A> for ~[A] {
-    fn extend<T: Iterator<A>>(&mut self, iterator: &mut T) {
+    fn extend<T: Iterator<A>>(&mut self, mut iterator: T) {
         let (lower, _) = iterator.size_hint();
         let len = self.len();
         self.reserve_exact(len + lower);
-        for x in *iterator {
+        for x in iterator {
             self.push(x);
         }
     }
@@ -3330,27 +3302,6 @@ mod tests {
     }
 
     #[test]
-    fn test_map() {
-        // Test on-stack map.
-        let v = &[1u, 2u, 3u];
-        let mut w = v.map(square_ref);
-        assert_eq!(w.len(), 3u);
-        assert_eq!(w[0], 1u);
-        assert_eq!(w[1], 4u);
-        assert_eq!(w[2], 9u);
-
-        // Test on-heap map.
-        let v = ~[1u, 2u, 3u, 4u, 5u];
-        w = v.map(square_ref);
-        assert_eq!(w.len(), 5u);
-        assert_eq!(w[0], 1u);
-        assert_eq!(w[1], 4u);
-        assert_eq!(w[2], 9u);
-        assert_eq!(w[3], 16u);
-        assert_eq!(w[4], 25u);
-    }
-
-    #[test]
     fn test_retain() {
         let mut v = ~[1, 2, 3, 4, 5];
         v.retain(is_odd);
@@ -3728,36 +3679,6 @@ mod tests {
             }
             (~0, Rc::new(0))
         })
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_map_fail() {
-        use rc::Rc;
-        let v = [(~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0))];
-        let mut i = 0;
-        v.map(|_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-            ~[(~0, Rc::new(0))]
-        });
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_flat_map_fail() {
-        use rc::Rc;
-        let v = [(~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0))];
-        let mut i = 0;
-        flat_map(v, |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 1;
-            ~[(~0, Rc::new(0))]
-        });
     }
 
     #[test]

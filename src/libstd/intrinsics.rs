@@ -41,7 +41,7 @@ A quick refresher on memory ordering:
 
 */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 // This is needed to prevent duplicate lang item definitions.
 #[cfg(test)]
@@ -296,7 +296,7 @@ extern "rust-intrinsic" {
     /// Create a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless T is Pod.
+    /// which is unsafe unless T is Copy.
     pub fn init<T>() -> T;
 
     /// Create an uninitialized value.
@@ -451,7 +451,7 @@ extern "rust-intrinsic" {
 /// `TypeId` represents a globally unique identifier for a type
 #[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and
                   // middle/lang_items.rs
-#[deriving(Eq, Hash, Show)]
+#[deriving(Eq, Hash, Show, TotalEq)]
 #[cfg(not(test))]
 pub struct TypeId {
     priv t: u64,

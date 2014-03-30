@@ -12,15 +12,15 @@
  * Collection types.
  */
 
-#[crate_id = "collections#0.10-pre"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[license = "MIT/ASL2"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
+#![crate_id = "collections#0.10-pre"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
 
-#[feature(macro_rules, managed_boxes, default_type_params, phase)];
+#![feature(macro_rules, managed_boxes, default_type_params, phase)]
 
 extern crate rand;
 
@@ -33,7 +33,6 @@ pub use deque::Deque;
 pub use dlist::DList;
 pub use enum_set::EnumSet;
 pub use hashmap::{HashMap, HashSet};
-pub use list::List;
 pub use lru_cache::LruCache;
 pub use priority_queue::PriorityQueue;
 pub use ringbuf::RingBuf;
@@ -47,7 +46,6 @@ pub mod deque;
 pub mod dlist;
 pub mod enum_set;
 pub mod hashmap;
-pub mod list;
 pub mod lru_cache;
 pub mod priority_queue;
 pub mod ringbuf;

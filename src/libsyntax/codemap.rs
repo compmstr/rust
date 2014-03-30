@@ -88,6 +88,8 @@ to the original source.
 pub struct Span {
     lo: BytePos,
     hi: BytePos,
+    /// Information about where the macro came from, if this piece of
+    /// code was created by a macro expansion.
     expn_info: Option<@ExpnInfo>
 }
 
@@ -108,16 +110,16 @@ impl Eq for Span {
 
 impl TotalEq for Span {}
 
-impl<S:Encoder> Encodable<S> for Span {
+impl<S:Encoder<E>, E> Encodable<S, E> for Span {
     /* Note #1972 -- spans are encoded but not decoded */
-    fn encode(&self, s: &mut S) {
+    fn encode(&self, s: &mut S) -> Result<(), E> {
         s.emit_nil()
     }
 }
 
-impl<D:Decoder> Decodable<D> for Span {
-    fn decode(_d: &mut D) -> Span {
-        DUMMY_SP
+impl<D:Decoder<E>, E> Decodable<D, E> for Span {
+    fn decode(_d: &mut D) -> Result<Span, E> {
+        Ok(DUMMY_SP)
     }
 }
 
@@ -162,26 +164,47 @@ pub struct LocWithOpt {
 pub struct FileMapAndLine {fm: Rc<FileMap>, line: uint}
 pub struct FileMapAndBytePos {fm: Rc<FileMap>, pos: BytePos}
 
+/// The syntax with which a macro was invoked.
 #[deriving(Clone, Hash, Show)]
 pub enum MacroFormat {
-    // e.g. #[deriving(...)] <item>
+    /// e.g. #[deriving(...)] <item>
     MacroAttribute,
-    // e.g. `format!()`
+    /// e.g. `format!()`
     MacroBang
 }
 
 #[deriving(Clone, Hash, Show)]
 pub struct NameAndSpan {
+    /// The name of the macro that was invoked to create the thing
+    /// with this Span.
     name: ~str,
-    // the format with which the macro was invoked.
+    /// The format with which the macro was invoked.
     format: MacroFormat,
+    /// The span of the macro definition itself. The macro may not
+    /// have a sensible definition span (e.g. something defined
+    /// completely inside libsyntax) in which case this is None.
     span: Option<Span>
 }
 
 /// Extra information for tracking macro expansion of spans
 #[deriving(Hash, Show)]
 pub struct ExpnInfo {
+    /// The location of the actual macro invocation, e.g. `let x =
+    /// foo!();`
+    ///
+    /// This may recursively refer to other macro invocations, e.g. if
+    /// `foo!()` invoked `bar!()` internally, and there was an
+    /// expression inside `bar!`; the call_site of the expression in
+    /// the expansion would point to the `bar!` invocation; that
+    /// call_site span would have its own ExpnInfo, with the call_site
+    /// pointing to the `foo!` invocation.
     call_site: Span,
+    /// Information about the macro and its definition.
+    ///
+    /// The `callee` of the inner expression in the `call_site`
+    /// example would point to the `macro_rules! bar { ... }` and that
+    /// of the `bar!()` invocation would point to the `macro_rules!
+    /// foo { ... }`.
     callee: NameAndSpan
 }
 

@@ -282,7 +282,7 @@ pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
                 let mut items: SmallVector<@ast::Item> = SmallVector::zero();
                 dec_fn(fld.cx, attr.span, attr.node.value, it,
                        |item| items.push(item));
-                decorator_items.extend(&mut items.move_iter()
+                decorator_items.extend(items.move_iter()
                     .flat_map(|item| expand_item(item, fld).move_iter()));
 
                 fld.cx.bt_pop();
@@ -776,7 +776,7 @@ pub fn expand_block(blk: &Block, fld: &mut MacroExpander) -> P<Block> {
 
 // expand the elements of a block.
 pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
-    let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
+    let new_view_items = b.view_items.iter().map(|x| fld.fold_view_item(x)).collect();
     let new_stmts =
         b.stmts.iter().flat_map(|x| {
             let renamed_stmt = {

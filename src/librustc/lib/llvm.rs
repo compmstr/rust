@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_uppercase_pattern_statics)];
-#[allow(non_camel_case_types)];
+#![allow(non_uppercase_pattern_statics)]
+#![allow(non_camel_case_types)]
 
 use std::c_str::ToCStr;
 use std::cell::RefCell;
@@ -277,6 +277,7 @@ pub mod debuginfo {
     pub type DIDerivedType = DIType;
     pub type DICompositeType = DIDerivedType;
     pub type DIVariable = DIDescriptor;
+    pub type DIGlobalVariable = DIDescriptor;
     pub type DIArray = DIDescriptor;
     pub type DISubrange = DIDescriptor;
 
@@ -1589,6 +1590,18 @@ pub mod llvm {
                                                Col: c_uint)
                                                -> DILexicalBlock;
 
+        pub fn LLVMDIBuilderCreateStaticVariable(Builder: DIBuilderRef,
+                                                 Context: DIDescriptor,
+                                                 Name: *c_char,
+                                                 LinkageName: *c_char,
+                                                 File: DIFile,
+                                                 LineNo: c_uint,
+                                                 Ty: DIType,
+                                                 isLocalToUnit: bool,
+                                                 Val: ValueRef,
+                                                 Decl: ValueRef)
+                                                 -> DIGlobalVariable;
+
         pub fn LLVMDIBuilderCreateLocalVariable(Builder: DIBuilderRef,
                                                 Tag: c_uint,
                                                 Scope: DIDescriptor,
@@ -1848,7 +1861,7 @@ impl TypeNames {
     }
 
     pub fn types_to_str(&self, tys: &[Type]) -> ~str {
-        let strs = tys.map(|t| self.type_to_str(*t));
+        let strs: Vec<~str> = tys.iter().map(|t| self.type_to_str(*t)).collect();
         format!("[{}]", strs.connect(","))
     }
 

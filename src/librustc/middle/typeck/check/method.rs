@@ -263,6 +263,7 @@ fn construct_transformed_self_ty_for_object(
             let transformed_self_ty = *method_ty.fty.sig.inputs.get(0);
             match ty::get(transformed_self_ty).sty {
                 ty::ty_rptr(r, mt) => { // must be SelfRegion
+                    let r = r.subst(tcx, &substs); // handle Early-Bound lifetime
                     ty::mk_trait(tcx, trait_def_id, substs,
                                  RegionTraitStore(r), mt.mutbl,
                                  ty::EmptyBuiltinBounds())
@@ -658,7 +659,10 @@ impl<'a> LookupContext<'a> {
         debug!("push_candidates_from_impl: {} {} {}",
                token::get_name(self.m_name),
                impl_info.ident.repr(self.tcx()),
-               impl_info.methods.map(|m| m.ident).repr(self.tcx()));
+               impl_info.methods.iter()
+                                .map(|m| m.ident)
+                                .collect::<Vec<ast::Ident>>()
+                                .repr(self.tcx()));
 
         let idx = {
             match impl_info.methods
@@ -1435,9 +1439,10 @@ impl<'a> LookupContext<'a> {
 
 impl Repr for Candidate {
     fn repr(&self, tcx: &ty::ctxt) -> ~str {
-        format!("Candidate(rcvr_ty={}, rcvr_substs={}, origin={:?})",
+        format!("Candidate(rcvr_ty={}, rcvr_substs={}, method_ty={}, origin={:?})",
                 self.rcvr_match_condition.repr(tcx),
                 self.rcvr_substs.repr(tcx),
+                self.method_ty.repr(tcx),
                 self.origin)
     }
 }

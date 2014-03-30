@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use back::svh::Svh;
 use driver::session::Session;
@@ -384,6 +384,7 @@ pub struct t_box_ {
 // alive, and using ty::get is unsafe when the ctxt is no longer alive.
 enum t_opaque {}
 
+#[allow(raw_pointer_deriving)]
 #[deriving(Clone, Eq, TotalEq, Hash)]
 pub struct t { priv inner: *t_opaque }
 
@@ -841,7 +842,7 @@ pub enum BuiltinBound {
     BoundStatic,
     BoundSend,
     BoundSized,
-    BoundPod,
+    BoundCopy,
     BoundShare,
 }
 
@@ -1407,14 +1408,14 @@ pub fn mk_ctor_fn(cx: &ctxt,
                   binder_id: ast::NodeId,
                   input_tys: &[ty::t],
                   output: ty::t) -> t {
-    let input_args = input_tys.map(|t| *t);
+    let input_args = input_tys.iter().map(|t| *t).collect();
     mk_bare_fn(cx,
                BareFnTy {
                    purity: ast::ImpureFn,
                    abis: AbiSet::Rust(),
                    sig: FnSig {
                     binder_id: binder_id,
-                    inputs: Vec::from_slice(input_args),
+                    inputs: input_args,
                     output: output,
                     variadic: false
                    }
@@ -1904,7 +1905,7 @@ def_type_content_sets!(
         // Things that make values considered not POD (would be same
         // as `Moves`, but for the fact that managed data `@` is
         // not considered POD)
-        Nonpod                              = 0b0000_0000__0000_1111__0000,
+        Noncopy                              = 0b0000_0000__0000_1111__0000,
 
         // Bits to set when a managed value is encountered
         //
@@ -1928,7 +1929,7 @@ impl TypeContents {
             BoundStatic => self.is_static(cx),
             BoundSend => self.is_sendable(cx),
             BoundSized => self.is_sized(cx),
-            BoundPod => self.is_pod(cx),
+            BoundCopy => self.is_copy(cx),
             BoundShare => self.is_sharable(cx),
         }
     }
@@ -1965,8 +1966,8 @@ impl TypeContents {
         !self.intersects(TC::Nonsized)
     }
 
-    pub fn is_pod(&self, _: &ctxt) -> bool {
-        !self.intersects(TC::Nonpod)
+    pub fn is_copy(&self, _: &ctxt) -> bool {
+        !self.intersects(TC::Noncopy)
     }
 
     pub fn interior_unsafe(&self) -> bool {
@@ -2262,7 +2263,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
             tc | TC::ReachesNonsendAnnot
         } else if Some(did) == cx.lang_items.managed_bound() {
             tc | TC::Managed
-        } else if Some(did) == cx.lang_items.no_pod_bound() {
+        } else if Some(did) == cx.lang_items.no_copy_bound() {
             tc | TC::OwnsAffine
         } else if Some(did) == cx.lang_items.no_share_bound() {
             tc | TC::ReachesNoShare
@@ -2344,7 +2345,7 @@ pub fn type_contents(cx: &ctxt, ty: t) -> TypeContents {
                 BoundStatic => TC::Nonstatic,
                 BoundSend => TC::Nonsendable,
                 BoundSized => TC::Nonsized,
-                BoundPod => TC::Nonpod,
+                BoundCopy => TC::Noncopy,
                 BoundShare => TC::Nonsharable,
             };
         });
@@ -2879,7 +2880,7 @@ pub fn replace_closure_return_type(tcx: &ctxt, fn_type: t, ret_type: t) -> t {
 
 // Returns a vec of all the input and output types of fty.
 pub fn tys_in_fn_sig(sig: &FnSig) -> Vec<t> {
-    vec::append_one(sig.inputs.map(|a| *a), sig.output)
+    vec::append_one(sig.inputs.iter().map(|a| *a).collect(), sig.output)
 }
 
 // Type accessors for AST nodes
@@ -3431,7 +3432,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
     tcx.sess.bug(format!(
         "no field named `{}` found in the list of fields `{:?}`",
         token::get_name(name),
-        fields.map(|f| token::get_ident(f.ident).get().to_str())));
+        fields.iter().map(|f| token::get_ident(f.ident).get().to_str()).collect::<Vec<~str>>()));
 }
 
 pub fn method_idx(id: ast::Ident, meths: &[@Method]) -> Option<uint> {
@@ -3723,8 +3724,8 @@ pub fn trait_supertraits(cx: &ctxt, id: ast::DefId) -> @Vec<@TraitRef> {
 
 pub fn trait_ref_supertraits(cx: &ctxt, trait_ref: &ty::TraitRef) -> Vec<@TraitRef> {
     let supertrait_refs = trait_supertraits(cx, trait_ref.def_id);
-    supertrait_refs.map(
-        |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs))
+    supertrait_refs.iter().map(
+        |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs)).collect()
 }
 
 fn lookup_locally_or_in_crate_store<V:Clone>(
@@ -3767,7 +3768,7 @@ pub fn trait_methods(cx: &ctxt, trait_did: ast::DefId) -> @Vec<@Method> {
         Some(&methods) => methods,
         None => {
             let def_ids = ty::trait_method_def_ids(cx, trait_did);
-            let methods = @def_ids.map(|d| ty::method(cx, *d));
+            let methods = @def_ids.iter().map(|d| ty::method(cx, *d)).collect();
             trait_methods.insert(trait_did, methods);
             methods
         }
@@ -3875,7 +3876,7 @@ impl VariantInfo {
         match ast_variant.node.kind {
             ast::TupleVariantKind(ref args) => {
                 let arg_tys = if args.len() > 0 {
-                    ty_fn_args(ctor_ty).map(|a| *a)
+                    ty_fn_args(ctor_ty).iter().map(|a| *a).collect()
                 } else {
                     Vec::new()
                 };
@@ -3896,11 +3897,11 @@ impl VariantInfo {
 
                 assert!(fields.len() > 0);
 
-                let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
+                let arg_tys = ty_fn_args(ctor_ty).iter().map(|a| *a).collect();
                 let arg_names = fields.iter().map(|field| {
                     match field.node.kind {
                         NamedField(ident, _) => ident,
-                        UnnamedField => cx.sess.bug(
+                        UnnamedField(..) => cx.sess.bug(
                             "enum_variants: all fields in struct must have a name")
                     }
                 }).collect();
@@ -4264,11 +4265,11 @@ fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
                     vis: visibility,
                 }
             }
-            UnnamedField => {
+            UnnamedField(visibility) => {
                 field_ty {
                     name: syntax::parse::token::special_idents::unnamed_field.name,
                     id: ast_util::local_def(field.node.id),
-                    vis: ast::Public,
+                    vis: visibility,
                 }
             }
         }
@@ -4279,7 +4280,7 @@ fn struct_field_tys(fields: &[StructField]) -> Vec<field_ty> {
 // this. Takes a list of substs with which to instantiate field types.
 pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &substs)
                      -> Vec<field> {
-    lookup_struct_fields(cx, did).map(|f| {
+    lookup_struct_fields(cx, did).iter().map(|f| {
        field {
             // FIXME #6993: change type of field to Name and get rid of new()
             ident: ast::Ident::new(f.name),
@@ -4288,7 +4289,7 @@ pub fn struct_fields(cx: &ctxt, did: ast::DefId, substs: &substs)
                 mutbl: MutImmutable
             }
         }
-    })
+    }).collect()
 }
 
 pub fn is_binopable(cx: &ctxt, ty: t, op: ast::BinOp) -> bool {

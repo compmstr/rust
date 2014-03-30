@@ -15,19 +15,17 @@
 //! of individual objects while the arena itself is still alive. The benefit
 //! of an arena is very fast allocation; just a pointer bump.
 
-#[crate_id = "arena#0.10-pre"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[license = "MIT/ASL2"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
-#[allow(missing_doc)];
-#[feature(managed_boxes)];
+#![crate_id = "arena#0.10-pre"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
+#![allow(missing_doc)]
+#![feature(managed_boxes)]
 
 extern crate collections;
-
-use collections::list::{List, Cons, Nil};
 
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
@@ -48,7 +46,7 @@ use std::intrinsics;
 struct Chunk {
     data: Rc<RefCell<Vec<u8> >>,
     fill: Cell<uint>,
-    is_pod: Cell<bool>,
+    is_copy: Cell<bool>,
 }
 impl Chunk {
     fn capacity(&self) -> uint {
@@ -86,8 +84,8 @@ pub struct Arena {
     // microoptimization, to avoid needing to case on the list to
     // access the head.
     priv head: Chunk,
-    priv pod_head: Chunk,
-    priv chunks: RefCell<@List<Chunk>>,
+    priv copy_head: Chunk,
+    priv chunks: RefCell<Vec<Chunk>>,
 }
 
 impl Arena {
@@ -98,17 +96,17 @@ impl Arena {
     pub fn new_with_size(initial_size: uint) -> Arena {
         Arena {
             head: chunk(initial_size, false),
-            pod_head: chunk(initial_size, true),
-            chunks: RefCell::new(@Nil),
+            copy_head: chunk(initial_size, true),
+            chunks: RefCell::new(Vec::new()),
         }
     }
 }
 
-fn chunk(size: uint, is_pod: bool) -> Chunk {
+fn chunk(size: uint, is_copy: bool) -> Chunk {
     Chunk {
         data: Rc::new(RefCell::new(Vec::with_capacity(size))),
         fill: Cell::new(0u),
-        is_pod: Cell::new(is_pod),
+        is_copy: Cell::new(is_copy),
     }
 }
 
@@ -117,8 +115,8 @@ impl Drop for Arena {
     fn drop(&mut self) {
         unsafe {
             destroy_chunk(&self.head);
-            for chunk in self.chunks.get().iter() {
-                if !chunk.is_pod.get() {
+            for chunk in self.chunks.borrow().iter() {
+                if !chunk.is_copy.get() {
                     destroy_chunk(chunk);
                 }
             }
@@ -173,41 +171,41 @@ fn un_bitpack_tydesc_ptr(p: uint) -> (*TyDesc, bool) {
 
 impl Arena {
     fn chunk_size(&self) -> uint {
-        self.pod_head.capacity()
+        self.copy_head.capacity()
     }
     // Functions for the POD part of the arena
-    fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
+    fn alloc_copy_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        self.chunks.set(@Cons(self.pod_head.clone(), self.chunks.get()));
-        self.pod_head =
+        self.chunks.borrow_mut().push(self.copy_head.clone());
+        self.copy_head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), true);
 
-        return self.alloc_pod_inner(n_bytes, align);
+        return self.alloc_copy_inner(n_bytes, align);
     }
 
     #[inline]
-    fn alloc_pod_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
+    fn alloc_copy_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
             let this = transmute_mut_region(self);
-            let start = round_up(this.pod_head.fill.get(), align);
+            let start = round_up(this.copy_head.fill.get(), align);
             let end = start + n_bytes;
             if end > self.chunk_size() {
-                return this.alloc_pod_grow(n_bytes, align);
+                return this.alloc_copy_grow(n_bytes, align);
             }
-            this.pod_head.fill.set(end);
+            this.copy_head.fill.set(end);
 
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill.get());
 
-            this.pod_head.as_ptr().offset(start as int)
+            this.copy_head.as_ptr().offset(start as int)
         }
     }
 
     #[inline]
-    fn alloc_pod<'a, T>(&'a mut self, op: || -> T) -> &'a T {
+    fn alloc_copy<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
-            let ptr = self.alloc_pod_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
+            let ptr = self.alloc_copy_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
             let ptr: *mut T = transmute(ptr);
             mem::move_val_init(&mut (*ptr), op());
             return transmute(ptr);
@@ -215,19 +213,19 @@ impl Arena {
     }
 
     // Functions for the non-POD part of the arena
-    fn alloc_nonpod_grow(&mut self, n_bytes: uint, align: uint)
+    fn alloc_noncopy_grow(&mut self, n_bytes: uint, align: uint)
                          -> (*u8, *u8) {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        self.chunks.set(@Cons(self.head.clone(), self.chunks.get()));
+        self.chunks.borrow_mut().push(self.head.clone());
         self.head =
             chunk(num::next_power_of_two(new_min_chunk_size + 1u), false);
 
-        return self.alloc_nonpod_inner(n_bytes, align);
+        return self.alloc_noncopy_inner(n_bytes, align);
     }
 
     #[inline]
-    fn alloc_nonpod_inner(&mut self, n_bytes: uint, align: uint)
+    fn alloc_noncopy_inner(&mut self, n_bytes: uint, align: uint)
                           -> (*u8, *u8) {
         unsafe {
             let start;
@@ -245,7 +243,7 @@ impl Arena {
             }
 
             if end > self.head.capacity() {
-                return self.alloc_nonpod_grow(n_bytes, align);
+                return self.alloc_noncopy_grow(n_bytes, align);
             }
 
             let head = transmute_mut_region(&mut self.head);
@@ -260,11 +258,11 @@ impl Arena {
     }
 
     #[inline]
-    fn alloc_nonpod<'a, T>(&'a mut self, op: || -> T) -> &'a T {
+    fn alloc_noncopy<'a, T>(&'a mut self, op: || -> T) -> &'a T {
         unsafe {
             let tydesc = get_tydesc::<T>();
             let (ty_ptr, ptr) =
-                self.alloc_nonpod_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
+                self.alloc_noncopy_inner(mem::size_of::<T>(), mem::min_align_of::<T>());
             let ty_ptr: *mut uint = transmute(ty_ptr);
             let ptr: *mut T = transmute(ptr);
             // Write in our tydesc along with a bit indicating that it
@@ -287,9 +285,9 @@ impl Arena {
             // FIXME: Borrow check
             let this = transmute_mut(self);
             if intrinsics::needs_drop::<T>() {
-                this.alloc_nonpod(op)
+                this.alloc_noncopy(op)
             } else {
-                this.alloc_pod(op)
+                this.alloc_copy(op)
             }
         }
     }
@@ -496,7 +494,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_pod() {
+    pub fn test_copy() {
         let arena = TypedArena::new();
         for _ in range(0, 100000) {
             arena.alloc(Point {
@@ -508,7 +506,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_pod(bh: &mut BenchHarness) {
+    pub fn bench_copy(bh: &mut BenchHarness) {
         let arena = TypedArena::new();
         bh.iter(|| {
             arena.alloc(Point {
@@ -520,7 +518,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_pod_nonarena(bh: &mut BenchHarness) {
+    pub fn bench_copy_nonarena(bh: &mut BenchHarness) {
         bh.iter(|| {
             ~Point {
                 x: 1,
@@ -531,7 +529,7 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_pod_old_arena(bh: &mut BenchHarness) {
+    pub fn bench_copy_old_arena(bh: &mut BenchHarness) {
         let arena = Arena::new();
         bh.iter(|| {
             arena.alloc(|| {
@@ -544,16 +542,16 @@ mod tests {
         })
     }
 
-    struct Nonpod {
+    struct Noncopy {
         string: ~str,
         array: Vec<int> ,
     }
 
     #[test]
-    pub fn test_nonpod() {
+    pub fn test_noncopy() {
         let arena = TypedArena::new();
         for _ in range(0, 100000) {
-            arena.alloc(Nonpod {
+            arena.alloc(Noncopy {
                 string: ~"hello world",
                 array: vec!( 1, 2, 3, 4, 5 ),
             });
@@ -561,10 +559,10 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_nonpod(bh: &mut BenchHarness) {
+    pub fn bench_noncopy(bh: &mut BenchHarness) {
         let arena = TypedArena::new();
         bh.iter(|| {
-            arena.alloc(Nonpod {
+            arena.alloc(Noncopy {
                 string: ~"hello world",
                 array: vec!( 1, 2, 3, 4, 5 ),
             })
@@ -572,9 +570,9 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_nonpod_nonarena(bh: &mut BenchHarness) {
+    pub fn bench_noncopy_nonarena(bh: &mut BenchHarness) {
         bh.iter(|| {
-            ~Nonpod {
+            ~Noncopy {
                 string: ~"hello world",
                 array: vec!( 1, 2, 3, 4, 5 ),
             }
@@ -582,10 +580,10 @@ mod tests {
     }
 
     #[bench]
-    pub fn bench_nonpod_old_arena(bh: &mut BenchHarness) {
+    pub fn bench_noncopy_old_arena(bh: &mut BenchHarness) {
         let arena = Arena::new();
         bh.iter(|| {
-            arena.alloc(|| Nonpod {
+            arena.alloc(|| Noncopy {
                 string: ~"hello world",
                 array: vec!( 1, 2, 3, 4, 5 ),
             })

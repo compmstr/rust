@@ -110,7 +110,7 @@ mod table {
     /// Represents an index into a `RawTable` with no key or value in it.
     pub struct EmptyIndex {
         priv idx:   int,
-        priv nopod: marker::NoPod,
+        priv nocopy: marker::NoCopy,
     }
 
     /// Represents an index into a `RawTable` with a key, value, and hash
@@ -118,7 +118,7 @@ mod table {
     pub struct FullIndex {
         priv idx:   int,
         priv hash:  SafeHash,
-        priv nopod: marker::NoPod,
+        priv nocopy: marker::NoCopy,
     }
 
     impl FullIndex {
@@ -237,19 +237,19 @@ mod table {
             let idx  = index as int;
             let hash = unsafe { *self.hashes.offset(idx) };
 
-            let nopod = marker::NoPod;
+            let nocopy = marker::NoCopy;
 
             match hash {
                 EMPTY_BUCKET =>
                     Empty(EmptyIndex {
                         idx: idx,
-                        nopod: nopod
+                        nocopy: nocopy
                     }),
                 full_hash =>
                     Full(FullIndex {
                         idx:   idx,
                         hash:  SafeHash { hash: full_hash },
-                        nopod: nopod,
+                        nocopy: nocopy,
                     })
             }
         }
@@ -320,7 +320,7 @@ mod table {
 
             self.size += 1;
 
-            FullIndex { idx: idx, hash: hash, nopod: marker::NoPod }
+            FullIndex { idx: idx, hash: hash, nocopy: marker::NoCopy }
         }
 
         /// Removes a key and value from the hashtable.
@@ -347,7 +347,7 @@ mod table {
 
                 self.size -= 1;
 
-                (EmptyIndex { idx: idx, nopod: marker::NoPod }, k, v)
+                (EmptyIndex { idx: idx, nocopy: marker::NoCopy }, k, v)
             }
         }
 
@@ -1356,7 +1356,7 @@ pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
 impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
-    fn from_iterator<T: Iterator<(K, V)>>(iter: &mut T) -> HashMap<K, V, H> {
+    fn from_iterator<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
         let (lower, _) = iter.size_hint();
         let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
         map.extend(iter);
@@ -1365,8 +1365,8 @@ impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> fo
 }
 
 impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> Extendable<(K, V)> for HashMap<K, V, H> {
-    fn extend<T: Iterator<(K, V)>>(&mut self, iter: &mut T) {
-        for (k, v) in *iter {
+    fn extend<T: Iterator<(K, V)>>(&mut self, mut iter: T) {
+        for (k, v) in iter {
             self.insert(k, v);
         }
     }
@@ -1540,7 +1540,7 @@ impl<T: TotalEq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T,
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
-    fn from_iterator<I: Iterator<T>>(iter: &mut I) -> HashSet<T, H> {
+    fn from_iterator<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
         let (lower, _) = iter.size_hint();
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
         set.extend(iter);
@@ -1549,8 +1549,8 @@ impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSe
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> Extendable<T> for HashSet<T, H> {
-    fn extend<I: Iterator<T>>(&mut self, iter: &mut I) {
-        for k in *iter {
+    fn extend<I: Iterator<T>>(&mut self, mut iter: I) {
+        for k in iter {
             self.insert(k);
         }
     }

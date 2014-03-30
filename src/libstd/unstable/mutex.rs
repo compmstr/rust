@@ -56,7 +56,7 @@
 //! } // `lock` is deallocated here
 //! ```
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 use option::{Option, None, Some};
 use ops::Drop;
@@ -621,7 +621,7 @@ mod test {
     #[test]
     fn destroy_immediately() {
         unsafe {
-            let mut m = StaticNativeMutex::new();
+            let m = StaticNativeMutex::new();
             m.destroy();
         }
     }

@@ -20,7 +20,7 @@ and `Eq` to overload the `==` and `!=` operators.
 
 */
 
-#[allow(missing_doc)];
+#![allow(missing_doc)]
 
 /**
 * Trait for values that can be compared for equality and inequality.
@@ -42,7 +42,6 @@ pub trait Eq {
 }
 
 /// Trait for equality comparisons where `a == b` and `a != b` are strict inverses.
-#[cfg(not(stage0))]
 pub trait TotalEq: Eq {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
@@ -54,15 +53,6 @@ pub trait TotalEq: Eq {
     #[doc(hidden)]
     #[inline(always)]
     fn assert_receiver_is_total_eq(&self) {}
-}
-
-#[cfg(stage0)]
-pub trait TotalEq: Eq {
-    /// This method must return the same value as `eq`. It exists to prevent
-    /// deriving `TotalEq` from fields not implementing the `TotalEq` trait.
-    fn equals(&self, other: &Self) -> bool {
-        self.eq(other)
-    }
 }
 
 macro_rules! totaleq_impl(

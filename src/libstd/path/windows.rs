@@ -539,7 +539,7 @@ impl GenericPath for Path {
                     (Some(a), None) => {
                         comps.push(a);
                         if !a_verb {
-                            comps.extend(&mut ita);
+                            comps.extend(ita.by_ref());
                             break;
                         }
                     }
@@ -561,7 +561,7 @@ impl GenericPath for Path {
                         }
                         comps.push(a);
                         if !a_verb {
-                            comps.extend(&mut ita);
+                            comps.extend(ita.by_ref());
                             break;
                         }
                     }
@@ -637,7 +637,7 @@ impl Path {
     /// See str_components() for details.
     pub fn components<'a>(&'a self) -> Components<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
-            #[inline];
+            #![inline]
             x.unwrap().as_bytes()
         }
         self.str_components().map(convert)
@@ -647,7 +647,7 @@ impl Path {
     /// See str_components() for details.
     pub fn rev_components<'a>(&'a self) -> RevComponents<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
-            #[inline];
+            #![inline]
             x.unwrap().as_bytes()
         }
         self.rev_str_components().map(convert)

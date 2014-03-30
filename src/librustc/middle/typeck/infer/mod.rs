@@ -10,7 +10,7 @@
 
 /*! See doc.rs for documentation */
 
-#[allow(non_camel_case_types)];
+#![allow(non_camel_case_types)]
 
 pub use middle::ty::IntVarValue;
 pub use middle::typeck::infer::resolve::resolve_and_force_all_but_regions;
@@ -683,7 +683,7 @@ impl<'a> InferCtxt<'a> {
     }
 
     pub fn tys_to_str(&self, ts: &[ty::t]) -> ~str {
-        let tstrs = ts.map(|t| self.ty_to_str(*t));
+        let tstrs: Vec<~str> = ts.iter().map(|t| self.ty_to_str(*t)).collect();
         format!("({})", tstrs.connect(", "))
     }
 

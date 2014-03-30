@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id = "workcache#0.10-pre"];
-#[crate_type = "rlib"];
-#[crate_type = "dylib"];
-#[license = "MIT/ASL2"];
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
-#[feature(phase)];
-#[allow(visible_private_types)];
+#![crate_id = "workcache#0.10-pre"]
+#![crate_type = "rlib"]
+#![crate_type = "dylib"]
+#![license = "MIT/ASL2"]
+#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+       html_root_url = "http://static.rust-lang.org/doc/master")]
+#![feature(phase)]
+#![allow(visible_private_types)]
 
 #[phase(syntax, link)] extern crate log;
 extern crate serialize;
@@ -203,7 +203,7 @@ impl Database {
                                     self.db_filename.display(), e.to_str()),
                     Ok(r) => {
                         let mut decoder = json::Decoder::new(r);
-                        self.db_cache = Decodable::decode(&mut decoder);
+                        self.db_cache = Decodable::decode(&mut decoder).unwrap();
                     }
                 }
             }
@@ -252,19 +252,19 @@ enum Work<'a, T> {
     WorkFromTask(&'a Prep<'a>, Receiver<(Exec, T)>),
 }
 
-fn json_encode<'a, T:Encodable<json::Encoder<'a>>>(t: &T) -> ~str {
+fn json_encode<'a, T:Encodable<json::Encoder<'a>, io::IoError>>(t: &T) -> ~str {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
-    t.encode(&mut encoder);
+    let _ = t.encode(&mut encoder);
     str::from_utf8_owned(writer.unwrap()).unwrap()
 }
 
 // FIXME(#5121)
-fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
+fn json_decode<T:Decodable<json::Decoder, json::Error>>(s: &str) -> T {
     debug!("json decoding: {}", s);
     let j = json::from_str(s).unwrap();
     let mut decoder = json::Decoder::new(j);
-    Decodable::decode(&mut decoder)
+    Decodable::decode(&mut decoder).unwrap()
 }
 
 impl Context {
@@ -392,16 +392,16 @@ impl<'a> Prep<'a> {
     }
 
     pub fn exec<'a, T:Send +
-        Encodable<json::Encoder<'a>> +
-        Decodable<json::Decoder>>(
-            &'a self, blk: proc(&mut Exec) -> T) -> T {
+        Encodable<json::Encoder<'a>, io::IoError> +
+        Decodable<json::Decoder, json::Error>>(
+            &'a self, blk: proc:Send(&mut Exec) -> T) -> T {
         self.exec_work(blk).unwrap()
     }
 
     fn exec_work<'a, T:Send +
-        Encodable<json::Encoder<'a>> +
-        Decodable<json::Decoder>>( // FIXME(#5121)
-            &'a self, blk: proc(&mut Exec) -> T) -> Work<'a, T> {
+        Encodable<json::Encoder<'a>, io::IoError> +
+        Decodable<json::Decoder, json::Error>>( // FIXME(#5121)
+            &'a self, blk: proc:Send(&mut Exec) -> T) -> Work<'a, T> {
         let mut bo = Some(blk);
 
         debug!("exec_work: looking up {} and {:?}", self.fn_name,
@@ -443,8 +443,8 @@ impl<'a> Prep<'a> {
 }
 
 impl<'a, T:Send +
-       Encodable<json::Encoder<'a>> +
-       Decodable<json::Decoder>>
+       Encodable<json::Encoder<'a>, io::IoError> +
+       Decodable<json::Decoder, json::Error>>
     Work<'a, T> { // FIXME(#5121)
 
     pub fn from_value(elt: T) -> Work<'a, T> {
