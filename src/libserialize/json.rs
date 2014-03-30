@@ -1239,7 +1239,7 @@ impl<T : Iterator<char>> Parser<T> {
         while !self.eof() {
             self.parse_whitespace();
 
-            if !self.ch_is('"') {
+            if !self.ch_is('\"') {
                 return self.error(~"key must be a string");
             }
 
@@ -1473,7 +1473,14 @@ impl ::Decoder<Error> for Decoder {
         let mut obj = try!(expect!(self.pop(), Object));
 
         let value = match obj.pop(&name.to_owned()) {
-            None => return Err(MissingFieldError(name.to_owned())),
+            None => {
+                //For optional values, check if Null parses
+                self.stack.push(Null);
+                match f(self){
+                    Ok(res) => res,
+                    Err(_) => return Err(MissingFieldError(name.to_owned()))
+                }
+            },
             Some(json) => {
                 self.stack.push(json);
                 try!(f(self))

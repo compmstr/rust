@@ -530,9 +530,7 @@ pub mod reader {
                                 f: |&mut Decoder<'doc>| -> DecodeResult<T>)
                                 -> DecodeResult<T> {
             debug!("read_struct_field(name={}, idx={})", name, idx);
-            if !optional {
-                try!(self._check_label(name));
-            }
+            try!(self._check_label(name));
             f(self)
         }
 
