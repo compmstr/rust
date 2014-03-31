@@ -524,6 +524,18 @@ pub mod reader {
             f(self)
         }
 
+        #[cfg(not(stage0))]
+        fn read_struct_field<T>(&mut self,
+                                name: &str,
+                                idx: uint,
+                                _optional: bool,
+                                f: |&mut Decoder<'doc>| -> DecodeResult<T>)
+                                -> DecodeResult<T> {
+            debug!("read_struct_field(name={}, idx={})", name, idx);
+            try!(self._check_label(name));
+            f(self)
+        }
+        #[cfg(stage0)]
         fn read_struct_field<T>(&mut self,
                                 name: &str,
                                 idx: uint,

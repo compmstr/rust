@@ -135,9 +135,17 @@ pub trait Decoder<E> {
 
     fn read_struct<T>(&mut self, s_name: &str, len: uint, f: |&mut Self| -> Result<T, E>)
                       -> Result<T, E>;
+    #[cfg(stage0)]
     fn read_struct_field<T>(&mut self,
                             f_name: &str,
                             f_idx: uint,
+                            f: |&mut Self| -> Result<T, E>)
+                            -> Result<T, E>;
+    #[cfg(not(stage0))]
+    fn read_struct_field<T>(&mut self,
+                            f_name: &str,
+                            f_idx: uint,
+                            b_optional: bool,
                             f: |&mut Self| -> Result<T, E>)
                             -> Result<T, E>;
 

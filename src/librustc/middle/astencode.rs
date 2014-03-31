@@ -609,7 +609,9 @@ fn encode_method_callee(ecx: &e::EncodeContext,
     }).unwrap();
 }
 
+
 impl<'a> read_method_callee_helper for reader::Decoder<'a> {
+    #[cfg(stage0)]
     fn read_method_callee(&mut self, xcx: &ExtendedDecodeContext) -> (u32, MethodCallee) {
         self.read_struct("MethodCallee", 4, |this| {
             let autoderef = this.read_struct_field("autoderef", 0, |this| {
@@ -625,6 +627,28 @@ impl<'a> read_method_callee_helper for reader::Decoder<'a> {
                     Ok(this.read_ty(xcx))
                 }).unwrap(),
                 substs: this.read_struct_field("substs", 3, |this| {
+                    Ok(this.read_substs(xcx))
+                }).unwrap()
+            }))
+        }).unwrap()
+    }
+
+    #[cfg(not(stage0))]
+    fn read_method_callee(&mut self, xcx: &ExtendedDecodeContext) -> (u32, MethodCallee) {
+        self.read_struct("MethodCallee", 4, |this| {
+            let autoderef = this.read_struct_field("autoderef", 0, false, |this| {
+                Decodable::decode(this)
+            }).unwrap();
+            Ok((autoderef, MethodCallee {
+                origin: this.read_struct_field("origin", 1, false, |this| {
+                    let method_origin: MethodOrigin =
+                        Decodable::decode(this).unwrap();
+                    Ok(method_origin.tr(xcx))
+                }).unwrap(),
+                ty: this.read_struct_field("ty", 2, false, |this| {
+                    Ok(this.read_ty(xcx))
+                }).unwrap(),
+                substs: this.read_struct_field("substs", 3, false, |this| {
                     Ok(this.read_substs(xcx))
                 }).unwrap()
             }))
@@ -743,6 +767,7 @@ pub trait vtable_decoder_helpers {
 }
 
 impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
+    #[cfg(stage0)]
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt,
                                 cdata: @cstore::crate_metadata)
@@ -752,6 +777,21 @@ impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
                 Decodable::decode(this)
             }).unwrap();
             Ok((autoderef, this.read_struct_field("vtable_res", 1, |this| {
+                Ok(this.read_vtable_res(tcx, cdata))
+            }).unwrap()))
+        }).unwrap()
+    }
+
+    #[cfg(not(stage0))]
+    fn read_vtable_res_with_key(&mut self,
+                                tcx: &ty::ctxt,
+                                cdata: @cstore::crate_metadata)
+                                -> (u32, typeck::vtable_res) {
+        self.read_struct("VtableWithKey", 2, |this| {
+            let autoderef = this.read_struct_field("autoderef", 0, false, |this| {
+                Decodable::decode(this)
+            }).unwrap();
+            Ok((autoderef, this.read_struct_field("vtable_res", 1, false, |this| {
                 Ok(this.read_vtable_res(tcx, cdata))
             }).unwrap()))
         }).unwrap()
@@ -1230,6 +1270,7 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
         }).unwrap()
     }
 
+    #[cfg(stage0)]
     fn read_ty_param_bounds_and_ty(&mut self, xcx: &ExtendedDecodeContext)
                                    -> ty::ty_param_bounds_and_ty {
         self.read_struct("ty_param_bounds_and_ty", 2, |this| {
@@ -1257,6 +1298,39 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
                     })
                 }).unwrap(),
                 ty: this.read_struct_field("ty", 1, |this| {
+                    Ok(this.read_ty(xcx))
+                }).unwrap()
+            })
+        }).unwrap()
+    }
+    #[cfg(not(stage0))]
+    fn read_ty_param_bounds_and_ty(&mut self, xcx: &ExtendedDecodeContext)
+                                   -> ty::ty_param_bounds_and_ty {
+        self.read_struct("ty_param_bounds_and_ty", 2, |this| {
+            Ok(ty::ty_param_bounds_and_ty {
+                generics: this.read_struct_field("generics", 0, false, |this| {
+                    this.read_struct("Generics", 2, |this| {
+                        Ok(ty::Generics {
+                            type_param_defs:
+                                this.read_struct_field("type_param_defs",
+                                                       0, false,
+                                                       |this| {
+                                    Ok(Rc::new(this.read_to_vec(|this|
+                                                             Ok(this.read_type_param_def(xcx)))
+                                                .unwrap()
+                                                .move_iter()
+                                                .collect()))
+                            }).unwrap(),
+                            region_param_defs:
+                                this.read_struct_field("region_param_defs",
+                                                       1, false,
+                                                       |this| {
+                                    Decodable::decode(this)
+                                }).unwrap()
+                        })
+                    })
+                }).unwrap(),
+                ty: this.read_struct_field("ty", 1, false, |this| {
                     Ok(this.read_ty(xcx))
                 }).unwrap()
             })

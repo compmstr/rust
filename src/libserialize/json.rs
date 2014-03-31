@@ -973,7 +973,7 @@ impl<T : Iterator<char>> Parser<T> {
             't' => self.parse_ident("rue", Boolean(true)),
             'f' => self.parse_ident("alse", Boolean(false)),
             '0' .. '9' | '-' => self.parse_number(),
-            '"' => {
+            '\"' => {
                 match self.parse_str() {
                     Ok(s) => Ok(String(s)),
                     Err(e) => Err(e),
@@ -1464,6 +1464,7 @@ impl ::Decoder<Error> for Decoder {
         Ok(value)
     }
 
+    #[cfg(stage0)]
     fn read_struct_field<T>(&mut self,
                             name: &str,
                             idx: uint,
@@ -1474,6 +1475,34 @@ impl ::Decoder<Error> for Decoder {
 
         let value = match obj.pop(&name.to_owned()) {
             None => return Err(MissingFieldError(name.to_owned())),
+            Some(json) => {
+                self.stack.push(json);
+                try!(f(self))
+            }
+        };
+        self.stack.push(Object(obj));
+        Ok(value)
+    }
+
+    #[cfg(not(stage0))]
+    fn read_struct_field<T>(&mut self,
+                            name: &str,
+                            idx: uint,
+                            optional: bool,
+                            f: |&mut Decoder| -> DecodeResult<T>)
+                            -> DecodeResult<T> {
+        debug!("read_struct_field(name={}, idx={})", name, idx);
+        let mut obj = try!(expect!(self.pop(), Object));
+
+        let value = match obj.pop(&name.to_owned()) {
+            None => {
+                if optional {
+                    self.stack.push(Null);
+                    try!(f(self))
+                }else{
+                    return Err(MissingFieldError(name.to_owned()))
+                }
+            },
             Some(json) => {
                 self.stack.push(json);
                 try!(f(self))
