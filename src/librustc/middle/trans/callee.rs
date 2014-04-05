@@ -49,14 +49,13 @@ use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
 
-use std::vec;
 use syntax::ast;
-use syntax::abi::AbiSet;
+use synabi = syntax::abi;
 use syntax::ast_map;
 
 pub struct MethodData {
-    llfn: ValueRef,
-    llself: ValueRef,
+    pub llfn: ValueRef,
+    pub llself: ValueRef,
 }
 
 pub enum CalleeData {
@@ -71,8 +70,8 @@ pub enum CalleeData {
 }
 
 pub struct Callee<'a> {
-    bcx: &'a Block<'a>,
-    data: CalleeData
+    pub bcx: &'a Block<'a>,
+    pub data: CalleeData
 }
 
 fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
@@ -227,8 +226,7 @@ fn resolve_default_method_vtables(bcx: &Block,
         None => slice::from_elem(num_method_vtables, @Vec::new())
     };
 
-    let param_vtables = @(vec::append((*trait_vtables_fixed).clone(),
-                                          method_vtables));
+    let param_vtables = @((*trait_vtables_fixed).clone().append(method_vtables));
 
     let self_vtables = resolve_param_vtables_under_param_substs(
         bcx.tcx(), param_substs, impl_res.self_vtables);
@@ -365,7 +363,7 @@ pub fn trans_fn_ref_with_vtables(
 
         match map_node {
             ast_map::NodeForeignItem(_) => {
-                tcx.map.get_foreign_abis(def_id.node).is_intrinsic()
+                tcx.map.get_foreign_abi(def_id.node) == synabi::RustIntrinsic
             }
             _ => false
         }
@@ -514,48 +512,6 @@ pub fn trans_lang_call<'a>(
                              dest)
 }
 
-pub fn trans_lang_call_with_type_params<'a>(
-                                        bcx: &'a Block<'a>,
-                                        did: ast::DefId,
-                                        args: &[ValueRef],
-                                        type_params: &[ty::t],
-                                        dest: expr::Dest)
-                                        -> &'a Block<'a> {
-    let fty;
-    if did.krate == ast::LOCAL_CRATE {
-        fty = ty::node_id_to_type(bcx.tcx(), did.node);
-    } else {
-        fty = csearch::get_type(bcx.tcx(), did).ty;
-    }
-
-    return callee::trans_call_inner(
-        bcx,
-        None,
-        fty,
-        |bcx, _| {
-            let callee =
-                trans_fn_ref_with_vtables_to_callee(bcx, did, 0,
-                                                    type_params,
-                                                    None);
-
-            let new_llval;
-            match callee.data {
-                Fn(llfn) => {
-                    let substituted = ty::subst_tps(callee.bcx.tcx(),
-                                                    type_params,
-                                                    None,
-                                                    fty);
-                    let llfnty = type_of::type_of(callee.bcx.ccx(),
-                                                      substituted);
-                    new_llval = PointerCast(callee.bcx, llfn, llfnty);
-                }
-                _ => fail!()
-            }
-            Callee { bcx: callee.bcx, data: Fn(new_llval) }
-        },
-        ArgVals(args), Some(dest)).bcx;
-}
-
 pub fn trans_call_inner<'a>(
                         bcx: &'a Block<'a>,
                         call_info: Option<NodeInfo>,
@@ -616,13 +572,11 @@ pub fn trans_call_inner<'a>(
     };
 
     let (abi, ret_ty) = match ty::get(callee_ty).sty {
-        ty::ty_bare_fn(ref f) => (f.abis, f.sig.output),
-        ty::ty_closure(ref f) => (AbiSet::Rust(), f.sig.output),
+        ty::ty_bare_fn(ref f) => (f.abi, f.sig.output),
+        ty::ty_closure(ref f) => (synabi::Rust, f.sig.output),
         _ => fail!("expected bare rust fn or closure in trans_call_inner")
     };
-    let is_rust_fn =
-        abi.is_rust() ||
-        abi.is_intrinsic();
+    let is_rust_fn = abi == synabi::Rust || abi == synabi::RustIntrinsic;
 
     // Generate a location to store the result. If the user does
     // not care about the result, just make a stack slot.

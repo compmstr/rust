@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,7 +15,7 @@
 //! of individual objects while the arena itself is still alive. The benefit
 //! of an arena is very fast allocation; just a pointer bump.
 
-#![crate_id = "arena#0.10-pre"]
+#![crate_id = "arena#0.11-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
@@ -23,7 +23,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![allow(missing_doc)]
-#![feature(managed_boxes)]
 
 extern crate collections;
 
@@ -83,9 +82,9 @@ pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
-    priv head: Chunk,
-    priv copy_head: Chunk,
-    priv chunks: RefCell<Vec<Chunk>>,
+    head: Chunk,
+    copy_head: Chunk,
+    chunks: RefCell<Vec<Chunk>>,
 }
 
 impl Arena {
@@ -299,7 +298,7 @@ fn test_arena_destructors() {
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
-        arena.alloc(|| @i);
+        arena.alloc(|| Rc::new(i));
         // Allocate something with funny size and alignment, to keep
         // things interesting.
         arena.alloc(|| [0u8, 1u8, 2u8]);
@@ -314,13 +313,13 @@ fn test_arena_destructors_fail() {
     for i in range(0u, 10) {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
-        arena.alloc(|| { @i });
+        arena.alloc(|| { Rc::new(i) });
         // Allocate something with funny size and alignment, to keep
         // things interesting.
         arena.alloc(|| { [0u8, 1u8, 2u8] });
     }
     // Now, fail while allocating
-    arena.alloc::<@int>(|| {
+    arena.alloc::<Rc<int>>(|| {
         // Now fail.
         fail!();
     });
@@ -333,14 +332,14 @@ fn test_arena_destructors_fail() {
 /// run again for these objects.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
-    priv ptr: *T,
+    ptr: *T,
 
     /// A pointer to the end of the allocated area. When this pointer is
     /// reached, a new chunk is allocated.
-    priv end: *T,
+    end: *T,
 
     /// A pointer to the first arena segment.
-    priv first: Option<~TypedArenaChunk<T>>,
+    first: Option<~TypedArenaChunk<T>>,
 }
 
 struct TypedArenaChunk<T> {

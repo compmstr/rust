@@ -21,7 +21,7 @@ use std::slice;
 
 #[allow(missing_doc)]
 pub struct SmallIntMap<T> {
-    priv v: ~[Option<T>],
+    v: ~[Option<T>],
 }
 
 impl<V> Container for SmallIntMap<V> {
@@ -111,6 +111,11 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
 impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+
+    /// Create an empty SmallIntMap with capacity `capacity`
+    pub fn with_capacity(capacity: uint) -> SmallIntMap<V> {
+        SmallIntMap { v: slice::with_capacity(capacity) }
+    }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
@@ -234,9 +239,9 @@ macro_rules! double_ended_iterator {
 }
 
 pub struct Entries<'a, T> {
-    priv front: uint,
-    priv back: uint,
-    priv iter: slice::Items<'a, Option<T>>
+    front: uint,
+    back: uint,
+    iter: slice::Items<'a, Option<T>>
 }
 
 iterator!(impl Entries -> (uint, &'a T), get_ref)
@@ -244,9 +249,9 @@ double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
 pub type RevEntries<'a, T> = Rev<Entries<'a, T>>;
 
 pub struct MutEntries<'a, T> {
-    priv front: uint,
-    priv back: uint,
-    priv iter: slice::MutItems<'a, Option<T>>
+    front: uint,
+    back: uint,
+    iter: slice::MutItems<'a, Option<T>>
 }
 
 iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)

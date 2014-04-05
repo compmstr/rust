@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,7 +15,7 @@ Utilities for program-wide and customizable logging
 ## Example
 
 ```
-#[feature(phase)];
+#![feature(phase)]
 #[phase(syntax, link)] extern crate log;
 
 fn main() {
@@ -105,7 +105,7 @@ if logging is disabled, none of the components of the log will be executed.
 
 */
 
-#![crate_id = "log#0.10-pre"]
+#![crate_id = "log#0.11-pre"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

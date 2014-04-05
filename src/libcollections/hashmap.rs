@@ -100,25 +100,25 @@ mod table {
     /// this and going "what? of course there are debug-only asserts!", then
     /// please make this use them!
     pub struct RawTable<K, V> {
-        priv capacity: uint,
-        priv size:     uint,
-        priv hashes:   *mut u64,
-        priv keys:     *mut K,
-        priv vals:     *mut V,
+        capacity: uint,
+        size:     uint,
+        hashes:   *mut u64,
+        keys:     *mut K,
+        vals:     *mut V,
     }
 
     /// Represents an index into a `RawTable` with no key or value in it.
     pub struct EmptyIndex {
-        priv idx:   int,
-        priv nocopy: marker::NoCopy,
+        idx:   int,
+        nocopy: marker::NoCopy,
     }
 
     /// Represents an index into a `RawTable` with a key, value, and hash
     /// in it.
     pub struct FullIndex {
-        priv idx:   int,
-        priv hash:  SafeHash,
-        priv nocopy: marker::NoCopy,
+        idx:   int,
+        hash:  SafeHash,
+        nocopy: marker::NoCopy,
     }
 
     impl FullIndex {
@@ -142,7 +142,7 @@ mod table {
     /// A hash that is not zero, since we use that to represent empty buckets.
     #[deriving(Eq)]
     pub struct SafeHash {
-        priv hash: u64,
+        hash: u64,
     }
 
     impl SafeHash {
@@ -376,18 +376,18 @@ mod table {
     }
 
     pub struct Entries<'a, K, V> {
-        priv table: &'a RawTable<K, V>,
-        priv idx: uint,
+        table: &'a RawTable<K, V>,
+        idx: uint,
     }
 
     pub struct MutEntries<'a, K, V> {
-        priv table: &'a mut RawTable<K, V>,
-        priv idx: uint,
+        table: &'a mut RawTable<K, V>,
+        idx: uint,
     }
 
     pub struct MoveEntries<K, V> {
-        priv table: RawTable<K, V>,
-        priv idx: uint,
+        table: RawTable<K, V>,
+        idx: uint,
     }
 
     impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
@@ -675,19 +675,19 @@ static INITIAL_LOAD_FACTOR: Fraction = (9, 10);
 #[deriving(Clone)]
 pub struct HashMap<K, V, H = sip::SipHasher> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
-    priv hasher: H,
+    hasher: H,
 
     // When size == grow_at, we double the capacity.
-    priv grow_at: uint,
+    grow_at: uint,
 
     // The capacity must never drop below this.
-    priv minimum_capacity: uint,
+    minimum_capacity: uint,
 
-    priv table: table::RawTable<K, V>,
+    table: table::RawTable<K, V>,
 
     // We keep this at the end since it's 4-bytes, unlike everything else
     // in this struct. Might as well save a word of padding!
-    priv load_factor: Fraction,
+    load_factor: Fraction,
 }
 
 /// Get the number of elements which will force the capacity to grow.
@@ -1356,7 +1356,7 @@ pub type Values<'a, K, V> =
     iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
 impl<K: TotalEq + Hash<S>, V, S, H: Hasher<S> + Default> FromIterator<(K, V)> for HashMap<K, V, H> {
-    fn from_iterator<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
+    fn from_iter<T: Iterator<(K, V)>>(iter: T) -> HashMap<K, V, H> {
         let (lower, _) = iter.size_hint();
         let mut map = HashMap::with_capacity_and_hasher(lower, Default::default());
         map.extend(iter);
@@ -1385,7 +1385,7 @@ pub type SetMoveItems<K> =
 /// requires that the elements implement the `Eq` and `Hash` traits.
 #[deriving(Clone)]
 pub struct HashSet<T, H = sip::SipHasher> {
-    priv map: HashMap<T, (), H>
+    map: HashMap<T, (), H>
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S>> Eq for HashSet<T, H> {
@@ -1540,7 +1540,7 @@ impl<T: TotalEq + Hash<S> + fmt::Show, S, H: Hasher<S>> fmt::Show for HashSet<T,
 }
 
 impl<T: TotalEq + Hash<S>, S, H: Hasher<S> + Default> FromIterator<T> for HashSet<T, H> {
-    fn from_iterator<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
+    fn from_iter<I: Iterator<T>>(iter: I) -> HashSet<T, H> {
         let (lower, _) = iter.size_hint();
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
         set.extend(iter);
@@ -1600,12 +1600,12 @@ mod test_map {
 
     #[deriving(Hash, Eq, TotalEq)]
     struct Dropable {
-        k: int
+        k: uint
     }
 
 
     impl Dropable {
-        fn new(k: int) -> Dropable {
+        fn new(k: uint) -> Dropable {
             local_data::get_mut(drop_vector,
                 |v| { v.unwrap().as_mut_slice()[k] += 1; });
 
@@ -1628,24 +1628,24 @@ mod test_map {
             let mut m = HashMap::new();
 
             local_data::get(drop_vector, |v| {
-                for i in range(0, 200) {
+                for i in range(0u, 200) {
                     assert_eq!(v.unwrap().as_slice()[i], 0);
                 }
             });
 
-            for i in range(0, 100) {
+            for i in range(0u, 100) {
                 let d1 = Dropable::new(i);
                 let d2 = Dropable::new(i+100);
                 m.insert(d1, d2);
             }
 
             local_data::get(drop_vector, |v| {
-                for i in range(0, 200) {
+                for i in range(0u, 200) {
                     assert_eq!(v.unwrap().as_slice()[i], 1);
                 }
             });
 
-            for i in range(0, 50) {
+            for i in range(0u, 50) {
                 let k = Dropable::new(i);
                 let v = m.pop(&k);
 
@@ -1658,12 +1658,12 @@ mod test_map {
             }
 
             local_data::get(drop_vector, |v| {
-                for i in range(0, 50) {
+                for i in range(0u, 50) {
                     assert_eq!(v.unwrap().as_slice()[i], 0);
                     assert_eq!(v.unwrap().as_slice()[i+100], 0);
                 }
 
-                for i in range(50, 100) {
+                for i in range(50u, 100) {
                     assert_eq!(v.unwrap().as_slice()[i], 1);
                     assert_eq!(v.unwrap().as_slice()[i+100], 1);
                 }
@@ -1671,7 +1671,7 @@ mod test_map {
         }
 
         local_data::get(drop_vector, |v| {
-            for i in range(0, 200) {
+            for i in range(0u, 200) {
                 assert_eq!(v.unwrap().as_slice()[i], 0);
             }
         });

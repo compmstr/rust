@@ -30,8 +30,8 @@ enum Child<T> {
 
 #[allow(missing_doc)]
 pub struct TrieMap<T> {
-    priv root: TrieNode<T>,
-    priv length: uint
+    root: TrieNode<T>,
+    length: uint
 }
 
 impl<T> Container for TrieMap<T> {
@@ -261,7 +261,7 @@ impl<T> TrieMap<T> {
 }
 
 impl<T> FromIterator<(uint, T)> for TrieMap<T> {
-    fn from_iterator<Iter: Iterator<(uint, T)>>(iter: Iter) -> TrieMap<T> {
+    fn from_iter<Iter: Iterator<(uint, T)>>(iter: Iter) -> TrieMap<T> {
         let mut map = TrieMap::new();
         map.extend(iter);
         map
@@ -278,7 +278,7 @@ impl<T> Extendable<(uint, T)> for TrieMap<T> {
 
 #[allow(missing_doc)]
 pub struct TrieSet {
-    priv map: TrieMap<()>
+    map: TrieMap<()>
 }
 
 impl Container for TrieSet {
@@ -293,31 +293,45 @@ impl Mutable for TrieSet {
     fn clear(&mut self) { self.map.clear() }
 }
 
+impl Set<uint> for TrieSet {
+    #[inline]
+    fn contains(&self, value: &uint) -> bool {
+        self.map.contains_key(value)
+    }
+
+    #[inline]
+    fn is_disjoint(&self, other: &TrieSet) -> bool {
+        self.iter().all(|v| !other.contains(&v))
+    }
+
+    #[inline]
+    fn is_subset(&self, other: &TrieSet) -> bool {
+        self.iter().all(|v| other.contains(&v))
+    }
+
+    #[inline]
+    fn is_superset(&self, other: &TrieSet) -> bool {
+        other.is_subset(self)
+    }
+}
+
+impl MutableSet<uint> for TrieSet {
+    #[inline]
+    fn insert(&mut self, value: uint) -> bool {
+        self.map.insert(value, ())
+    }
+
+    #[inline]
+    fn remove(&mut self, value: &uint) -> bool {
+        self.map.remove(value)
+    }
+}
+
 impl TrieSet {
     /// Create an empty TrieSet
     #[inline]
     pub fn new() -> TrieSet {
         TrieSet{map: TrieMap::new()}
-    }
-
-    /// Return true if the set contains a value
-    #[inline]
-    pub fn contains(&self, value: &uint) -> bool {
-        self.map.contains_key(value)
-    }
-
-    /// Add a value to the set. Return true if the value was not already
-    /// present in the set.
-    #[inline]
-    pub fn insert(&mut self, value: uint) -> bool {
-        self.map.insert(value, ())
-    }
-
-    /// Remove a value from the set. Return true if the value was
-    /// present in the set.
-    #[inline]
-    pub fn remove(&mut self, value: &uint) -> bool {
-        self.map.remove(value)
     }
 
     /// Visit all values in reverse order
@@ -346,7 +360,7 @@ impl TrieSet {
 }
 
 impl FromIterator<uint> for TrieSet {
-    fn from_iterator<Iter: Iterator<uint>>(iter: Iter) -> TrieSet {
+    fn from_iter<Iter: Iterator<uint>>(iter: Iter) -> TrieSet {
         let mut set = TrieSet::new();
         set.extend(iter);
         set
@@ -474,19 +488,19 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
 
 /// Forward iterator over a map
 pub struct Entries<'a, T> {
-    priv stack: [slice::Items<'a, Child<T>>, .. NUM_CHUNKS],
-    priv length: uint,
-    priv remaining_min: uint,
-    priv remaining_max: uint
+    stack: [slice::Items<'a, Child<T>>, .. NUM_CHUNKS],
+    length: uint,
+    remaining_min: uint,
+    remaining_max: uint
 }
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
 pub struct MutEntries<'a, T> {
-    priv stack: [slice::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
-    priv length: uint,
-    priv remaining_min: uint,
-    priv remaining_max: uint
+    stack: [slice::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
+    length: uint,
+    remaining_min: uint,
+    remaining_max: uint
 }
 
 // FIXME #5846: see `addr!` above.
@@ -605,7 +619,7 @@ iterator_impl! { MutEntries, iter = mut_iter, mutability = mut }
 
 /// Forward iterator over a set
 pub struct SetItems<'a> {
-    priv iter: Entries<'a, ()>
+    iter: Entries<'a, ()>
 }
 
 impl<'a> Iterator<uint> for SetItems<'a> {

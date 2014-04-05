@@ -297,20 +297,16 @@ pub fn can_begin_expr(t: &Token) -> bool {
     }
 }
 
-/// what's the opposite delimiter?
-pub fn flip_delimiter(t: &token::Token) -> token::Token {
+/// Returns the matching close delimiter if this is an open delimiter,
+/// otherwise `None`.
+pub fn close_delimiter_for(t: &Token) -> Option<Token> {
     match *t {
-      LPAREN => RPAREN,
-      LBRACE => RBRACE,
-      LBRACKET => RBRACKET,
-      RPAREN => LPAREN,
-      RBRACE => LBRACE,
-      RBRACKET => LBRACKET,
-      _ => fail!()
+        LPAREN   => Some(RPAREN),
+        LBRACE   => Some(RBRACE),
+        LBRACKET => Some(RBRACKET),
+        _        => None
     }
 }
-
-
 
 pub fn is_lit(t: &Token) -> bool {
     match *t {
@@ -556,7 +552,7 @@ pub fn get_ident_interner() -> Rc<IdentInterner> {
 /// somehow.
 #[deriving(Clone, Eq, Hash, Ord, TotalEq, TotalOrd)]
 pub struct InternedString {
-    priv string: RcStr,
+    string: RcStr,
 }
 
 impl InternedString {

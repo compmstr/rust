@@ -14,7 +14,7 @@ Simple compression
 
 */
 
-#![crate_id = "flate#0.10-pre"]
+#![crate_id = "flate#0.11-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
@@ -112,7 +112,7 @@ mod tests {
         for _ in range(0, 20) {
             let mut input = ~[];
             for _ in range(0, 2000) {
-                input.push_all(r.choose(words.as_slice()));
+                input.push_all(r.choose(words.as_slice()).as_slice());
             }
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());

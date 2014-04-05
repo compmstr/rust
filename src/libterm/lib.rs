@@ -10,7 +10,7 @@
 
 //! Simple ANSI color library
 
-#![crate_id = "term#0.10-pre"]
+#![crate_id = "term#0.11-pre"]
 #![comment = "Simple ANSI color library"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
@@ -20,6 +20,7 @@
        html_root_url = "http://static.rust-lang.org/doc/master")]
 
 #![feature(macro_rules)]
+
 #![deny(missing_doc)]
 
 extern crate collections;
@@ -111,9 +112,9 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
 /// A Terminal that knows how many colors it supports, with a reference to its
 /// parsed TermInfo database record.
 pub struct Terminal<T> {
-    priv num_colors: u16,
-    priv out: T,
-    priv ti: ~TermInfo
+    num_colors: u16,
+    out: T,
+    ti: ~TermInfo
 }
 
 impl<T: Writer> Terminal<T> {

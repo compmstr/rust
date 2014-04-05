@@ -11,6 +11,7 @@
 //! The ISAAC random number generator.
 
 use {Rng, SeedableRng, OSRng};
+use std::io::IoResult;
 use std::iter::{range_step, Repeat};
 use std::slice::raw;
 use std::mem;
@@ -28,12 +29,12 @@ static RAND_SIZE: u32 = 1 << RAND_SIZE_LEN;
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
 pub struct IsaacRng {
-    priv cnt: u32,
-    priv rsl: [u32, .. RAND_SIZE],
-    priv mem: [u32, .. RAND_SIZE],
-    priv a: u32,
-    priv b: u32,
-    priv c: u32
+    cnt: u32,
+    rsl: [u32, .. RAND_SIZE],
+    mem: [u32, .. RAND_SIZE],
+    a: u32,
+    b: u32,
+    c: u32
 }
 static EMPTY: IsaacRng = IsaacRng {
     cnt: 0,
@@ -44,19 +45,23 @@ static EMPTY: IsaacRng = IsaacRng {
 
 impl IsaacRng {
     /// Create an ISAAC random number generator with a random seed.
-    pub fn new() -> IsaacRng {
+    ///
+    /// This reads randomness from the operating system (via `OSRng`)
+    /// which may fail, any error is propagated via the `IoResult`
+    /// return value.
+    pub fn new() -> IoResult<IsaacRng> {
         let mut rng = EMPTY;
-
+        let mut os_rng = try!(OSRng::new());
         unsafe {
             let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
-                OSRng::new().fill_bytes(slice);
+                os_rng.fill_bytes(slice);
             })
         }
 
         rng.init(true);
-        rng
+        Ok(rng)
     }
 
     /// Create an ISAAC random number generator using the default
@@ -98,7 +103,7 @@ impl IsaacRng {
         if use_rsl {
             macro_rules! memloop (
                 ($arr:expr) => {{
-                    for i in range_step(0u32, RAND_SIZE, 8) {
+                    for i in range_step(0, RAND_SIZE as uint, 8) {
                         a+=$arr[i  ]; b+=$arr[i+1];
                         c+=$arr[i+2]; d+=$arr[i+3];
                         e+=$arr[i+4]; f+=$arr[i+5];
@@ -115,7 +120,7 @@ impl IsaacRng {
             memloop!(self.rsl);
             memloop!(self.mem);
         } else {
-            for i in range_step(0u32, RAND_SIZE, 8) {
+            for i in range_step(0, RAND_SIZE as uint, 8) {
                 mix!();
                 self.mem[i  ]=a; self.mem[i+1]=b;
                 self.mem[i+2]=c; self.mem[i+3]=d;
@@ -138,7 +143,7 @@ impl IsaacRng {
         static MIDPOINT: uint = RAND_SIZE as uint / 2;
 
         macro_rules! ind (($x:expr) => {
-            self.mem[($x >> 2) & (RAND_SIZE - 1)]
+            self.mem[(($x >> 2) & (RAND_SIZE - 1)) as uint]
         });
         macro_rules! rngstep(
             ($j:expr, $shift:expr) => {{
@@ -183,7 +188,7 @@ impl Rng for IsaacRng {
             self.isaac();
         }
         self.cnt -= 1;
-        self.rsl[self.cnt]
+        self.rsl[self.cnt as uint]
     }
 }
 
@@ -231,12 +236,12 @@ static RAND_SIZE_64: uint = 1 << RAND_SIZE_64_LEN;
 /// [1]: Bob Jenkins, [*ISAAC: A fast cryptographic random number
 /// generator*](http://www.burtleburtle.net/bob/rand/isaacafa.html)
 pub struct Isaac64Rng {
-    priv cnt: uint,
-    priv rsl: [u64, .. RAND_SIZE_64],
-    priv mem: [u64, .. RAND_SIZE_64],
-    priv a: u64,
-    priv b: u64,
-    priv c: u64,
+    cnt: uint,
+    rsl: [u64, .. RAND_SIZE_64],
+    mem: [u64, .. RAND_SIZE_64],
+    a: u64,
+    b: u64,
+    c: u64,
 }
 
 static EMPTY_64: Isaac64Rng = Isaac64Rng {
@@ -249,19 +254,24 @@ static EMPTY_64: Isaac64Rng = Isaac64Rng {
 impl Isaac64Rng {
     /// Create a 64-bit ISAAC random number generator with a random
     /// seed.
-    pub fn new() -> Isaac64Rng {
+    ///
+    /// This reads randomness from the operating system (via `OSRng`)
+    /// which may fail, any error is propagated via the `IoResult`
+    /// return value.
+    pub fn new() -> IoResult<Isaac64Rng> {
         let mut rng = EMPTY_64;
+        let mut os_rng = try!(OSRng::new());
 
         unsafe {
             let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
-                OSRng::new().fill_bytes(slice);
+                os_rng.fill_bytes(slice);
             })
         }
 
         rng.init(true);
-        rng
+        Ok(rng)
     }
 
     /// Create a 64-bit ISAAC random number generator using the
@@ -430,19 +440,18 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
 #[cfg(test)]
 mod test {
     use super::{IsaacRng, Isaac64Rng};
-    use {Rng, SeedableRng, OSRng};
-    use std::slice;
+    use {Rng, SeedableRng, task_rng};
 
     #[test]
     fn test_rng_32_rand_seeded() {
-        let s = OSRng::new().gen_vec::<u32>(256);
+        let s = task_rng().gen_vec::<u32>(256);
         let mut ra: IsaacRng = SeedableRng::from_seed(s.as_slice());
         let mut rb: IsaacRng = SeedableRng::from_seed(s.as_slice());
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
     }
     #[test]
     fn test_rng_64_rand_seeded() {
-        let s = OSRng::new().gen_vec::<u64>(256);
+        let s = task_rng().gen_vec::<u64>(256);
         let mut ra: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         let mut rb: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         assert_eq!(ra.gen_ascii_str(100u), rb.gen_ascii_str(100u));
@@ -465,22 +474,22 @@ mod test {
 
     #[test]
     fn test_rng_32_reseed() {
-        let s = OSRng::new().gen_vec::<u32>(256);
+        let s = task_rng().gen_vec::<u32>(256);
         let mut r: IsaacRng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_str(100);
 
-        r.reseed(s);
+        r.reseed(s.as_slice());
 
         let string2 = r.gen_ascii_str(100);
         assert_eq!(string1, string2);
     }
     #[test]
     fn test_rng_64_reseed() {
-        let s = OSRng::new().gen_vec::<u64>(256);
+        let s = task_rng().gen_vec::<u64>(256);
         let mut r: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
         let string1 = r.gen_ascii_str(100);
 
-        r.reseed(s);
+        r.reseed(s.as_slice());
 
         let string2 = r.gen_ascii_str(100);
         assert_eq!(string1, string2);
@@ -491,43 +500,43 @@ mod test {
         let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = slice::from_fn(10, |_| ra.next_u32());
+        let v = Vec::from_fn(10, |_| ra.next_u32());
         assert_eq!(v,
-                   ~[2558573138, 873787463, 263499565, 2103644246, 3595684709,
-                     4203127393, 264982119, 2765226902, 2737944514, 3900253796]);
+                   vec!(2558573138, 873787463, 263499565, 2103644246, 3595684709,
+                        4203127393, 264982119, 2765226902, 2737944514, 3900253796));
 
         let seed = &[12345, 67890, 54321, 9876];
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
         for _ in range(0, 10000) { rb.next_u32(); }
 
-        let v = slice::from_fn(10, |_| rb.next_u32());
+        let v = Vec::from_fn(10, |_| rb.next_u32());
         assert_eq!(v,
-                   ~[3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
-                     1576568959, 3507990155, 179069555, 141456972, 2478885421]);
+                   vec!(3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
+                        1576568959, 3507990155, 179069555, 141456972, 2478885421));
     }
     #[test]
     fn test_rng_64_true_values() {
         let seed = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = slice::from_fn(10, |_| ra.next_u64());
+        let v = Vec::from_fn(10, |_| ra.next_u64());
         assert_eq!(v,
-                   ~[547121783600835980, 14377643087320773276, 17351601304698403469,
-                     1238879483818134882, 11952566807690396487, 13970131091560099343,
-                     4469761996653280935, 15552757044682284409, 6860251611068737823,
-                     13722198873481261842]);
+                   vec!(547121783600835980, 14377643087320773276, 17351601304698403469,
+                        1238879483818134882, 11952566807690396487, 13970131091560099343,
+                        4469761996653280935, 15552757044682284409, 6860251611068737823,
+                        13722198873481261842));
 
         let seed = &[12345, 67890, 54321, 9876];
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
         for _ in range(0, 10000) { rb.next_u64(); }
 
-        let v = slice::from_fn(10, |_| rb.next_u64());
+        let v = Vec::from_fn(10, |_| rb.next_u64());
         assert_eq!(v,
-                   ~[18143823860592706164, 8491801882678285927, 2699425367717515619,
-                     17196852593171130876, 2606123525235546165, 15790932315217671084,
-                     596345674630742204, 9947027391921273664, 11788097613744130851,
-                     10391409374914919106]);
+                   vec!(18143823860592706164, 8491801882678285927, 2699425367717515619,
+                        17196852593171130876, 2606123525235546165, 15790932315217671084,
+                        596345674630742204, 9947027391921273664, 11788097613744130851,
+                        10391409374914919106));
     }
 }

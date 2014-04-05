@@ -27,7 +27,7 @@ use Rng;
 /// println!("{:x}", rng.gen::<uint>());
 /// ```
 pub struct ReaderRng<R> {
-    priv reader: R
+    reader: R
 }
 
 impl<R: Reader> ReaderRng<R> {
@@ -68,6 +68,7 @@ impl<R: Reader> Rng for ReaderRng<R> {
 }
 
 #[cfg(test)]
+#[allow(deprecated_owned_vector)]
 mod test {
     use super::ReaderRng;
     use std::io::MemReader;

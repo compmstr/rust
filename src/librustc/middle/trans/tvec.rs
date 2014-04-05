@@ -55,14 +55,6 @@ pub fn get_fill(bcx: &Block, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]))
 }
 
-pub fn set_fill(bcx: &Block, vptr: ValueRef, fill: ValueRef) {
-    Store(bcx, fill, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]));
-}
-
-pub fn get_alloc(bcx: &Block, vptr: ValueRef) -> ValueRef {
-    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
-}
-
 pub fn get_dataptr(bcx: &Block, vptr: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::get_dataptr");
     GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u])
@@ -102,15 +94,6 @@ pub fn alloc_raw<'a>(
     }
 }
 
-pub fn alloc_uniq_raw<'a>(
-                      bcx: &'a Block<'a>,
-                      unit_ty: ty::t,
-                      fill: ValueRef,
-                      alloc: ValueRef)
-                      -> Result<'a> {
-    alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
-}
-
 pub fn alloc_uniq_vec<'a>(
                  bcx: &'a Block<'a>,
                  unit_ty: ty::t,
@@ -143,11 +126,11 @@ pub fn make_drop_glue_unboxed<'a>(
 }
 
 pub struct VecTypes {
-    vec_ty: ty::t,
-    unit_ty: ty::t,
-    llunit_ty: Type,
-    llunit_size: ValueRef,
-    llunit_alloc_size: u64
+    pub vec_ty: ty::t,
+    pub unit_ty: ty::t,
+    pub llunit_ty: Type,
+    pub llunit_size: ValueRef,
+    pub llunit_alloc_size: u64
 }
 
 impl VecTypes {
@@ -289,7 +272,7 @@ pub fn trans_lit_str<'a>(
             unsafe {
                 let bytes = str_lit.get().len();
                 let llbytes = C_uint(bcx.ccx(), bytes);
-                let llcstr = C_cstr(bcx.ccx(), str_lit);
+                let llcstr = C_cstr(bcx.ccx(), str_lit, false);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p(bcx.ccx()).to_ref());
                 Store(bcx, llcstr,
                       GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
@@ -319,7 +302,7 @@ pub fn trans_uniq_vstore<'a>(bcx: &'a Block<'a>,
         ast::ExprLit(lit) => {
             match lit.node {
                 ast::LitStr(ref s, _) => {
-                    let llptrval = C_cstr(bcx.ccx(), (*s).clone());
+                    let llptrval = C_cstr(bcx.ccx(), (*s).clone(), false);
                     let llptrval = PointerCast(bcx,
                                                llptrval,
                                                Type::i8p(bcx.ccx()));
@@ -393,7 +376,7 @@ pub fn write_content<'a>(
                         SaveIn(lldest) => {
                             let bytes = s.get().len();
                             let llbytes = C_uint(bcx.ccx(), bytes);
-                            let llcstr = C_cstr(bcx.ccx(), (*s).clone());
+                            let llcstr = C_cstr(bcx.ccx(), (*s).clone(), false);
                             base::call_memcpy(bcx,
                                               lldest,
                                               llcstr,
@@ -409,7 +392,7 @@ pub fn write_content<'a>(
                 }
             }
         }
-        ast::ExprVec(ref elements, _) => {
+        ast::ExprVec(ref elements) => {
             match dest {
                 Ignore => {
                     for element in elements.iter() {
@@ -435,7 +418,7 @@ pub fn write_content<'a>(
             }
             return bcx;
         }
-        ast::ExprRepeat(element, count_expr, _) => {
+        ast::ExprRepeat(element, count_expr) => {
             match dest {
                 Ignore => {
                     return expr::trans_into(bcx, element, Ignore);
@@ -503,8 +486,8 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
                 }
             }
         },
-        ast::ExprVec(ref es, _) => es.len(),
-        ast::ExprRepeat(_, count_expr, _) => {
+        ast::ExprVec(ref es) => es.len(),
+        ast::ExprRepeat(_, count_expr) => {
             ty::eval_repeat_count(bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
@@ -691,19 +674,6 @@ pub fn iter_vec_raw<'r,
         Br(body_bcx, header_bcx.llbb);
         next_bcx
     }
-}
-
-pub fn iter_vec_uniq<'r,
-                     'b>(
-                     bcx: &'b Block<'b>,
-                     vptr: ValueRef,
-                     vec_ty: ty::t,
-                     fill: ValueRef,
-                     f: iter_vec_block<'r,'b>)
-                     -> &'b Block<'b> {
-    let _icx = push_ctxt("tvec::iter_vec_uniq");
-    let data_ptr = get_dataptr(bcx, vptr);
-    iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 
 pub fn iter_vec_unboxed<'r,

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::AbiSet;
+use abi;
 use ast::{P, Ident};
 use ast;
 use ast_util;
@@ -579,7 +579,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprVstore(expr, vst))
     }
     fn expr_vec(&self, sp: Span, exprs: Vec<@ast::Expr> ) -> @ast::Expr {
-        self.expr(sp, ast::ExprVec(exprs, ast::MutImmutable))
+        self.expr(sp, ast::ExprVec(exprs))
     }
     fn expr_vec_ng(&self, sp: Span) -> @ast::Expr {
         self.expr_call_global(sp,
@@ -826,7 +826,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   Vec::new(),
                   ast::ItemFn(self.fn_decl(inputs, output),
                               ast::ImpureFn,
-                              AbiSet::Rust(),
+                              abi::Rust,
                               generics,
                               body))
     }

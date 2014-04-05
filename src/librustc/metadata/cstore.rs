@@ -23,7 +23,6 @@ use std::rc::Rc;
 use collections::HashMap;
 use syntax::ast;
 use syntax::parse::token::IdentInterner;
-use syntax::crateid::CrateId;
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -37,10 +36,10 @@ pub enum MetadataBlob {
 }
 
 pub struct crate_metadata {
-    name: ~str,
-    data: MetadataBlob,
-    cnum_map: cnum_map,
-    cnum: ast::CrateNum
+    pub name: ~str,
+    pub data: MetadataBlob,
+    pub cnum_map: cnum_map,
+    pub cnum: ast::CrateNum,
 }
 
 #[deriving(Eq)]
@@ -60,18 +59,18 @@ pub enum NativeLibaryKind {
 // must be non-None.
 #[deriving(Eq, Clone)]
 pub struct CrateSource {
-    dylib: Option<Path>,
-    rlib: Option<Path>,
-    cnum: ast::CrateNum,
+    pub dylib: Option<Path>,
+    pub rlib: Option<Path>,
+    pub cnum: ast::CrateNum,
 }
 
 pub struct CStore {
-    priv metas: RefCell<HashMap<ast::CrateNum, @crate_metadata>>,
-    priv extern_mod_crate_map: RefCell<extern_mod_crate_map>,
-    priv used_crate_sources: RefCell<Vec<CrateSource> >,
-    priv used_libraries: RefCell<Vec<(~str, NativeLibaryKind)> >,
-    priv used_link_args: RefCell<Vec<~str> >,
-    intr: Rc<IdentInterner>
+    metas: RefCell<HashMap<ast::CrateNum, @crate_metadata>>,
+    extern_mod_crate_map: RefCell<extern_mod_crate_map>,
+    used_crate_sources: RefCell<Vec<CrateSource>>,
+    used_libraries: RefCell<Vec<(~str, NativeLibaryKind)>>,
+    used_link_args: RefCell<Vec<~str>>,
+    pub intr: Rc<IdentInterner>,
 }
 
 // Map from NodeId's of local extern crate statements to crate numbers
@@ -98,17 +97,8 @@ impl CStore {
         decoder::get_crate_hash(cdata.data())
     }
 
-    pub fn get_crate_id(&self, cnum: ast::CrateNum) -> CrateId {
-        let cdata = self.get_crate_data(cnum);
-        decoder::get_crate_id(cdata.data())
-    }
-
     pub fn set_crate_data(&self, cnum: ast::CrateNum, data: @crate_metadata) {
         self.metas.borrow_mut().insert(cnum, data);
-    }
-
-    pub fn have_crate_data(&self, cnum: ast::CrateNum) -> bool {
-        self.metas.borrow().contains_key(&cnum)
     }
 
     pub fn iter_crate_data(&self, i: |ast::CrateNum, @crate_metadata|) {

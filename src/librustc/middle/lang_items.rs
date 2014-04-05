@@ -47,7 +47,7 @@ pub enum LangItem {
 }
 
 pub struct LanguageItems {
-    items: Vec<Option<ast::DefId>> ,
+    pub items: Vec<Option<ast::DefId>> ,
 }
 
 impl LanguageItems {
@@ -96,6 +96,7 @@ impl LanguageItems {
     }
 
     $(
+        #[allow(dead_code)]
         pub fn $method(&self) -> Option<ast::DefId> {
             *self.items.get($variant as uint)
         }

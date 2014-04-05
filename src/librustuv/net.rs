@@ -153,22 +153,22 @@ pub struct TcpWatcher {
     handle: *uvll::uv_tcp_t,
     stream: StreamWatcher,
     home: HomeHandle,
-    priv refcount: Refcount,
+    refcount: Refcount,
 
     // libuv can't support concurrent reads and concurrent writes of the same
     // stream object, so we use these access guards in order to arbitrate among
     // multiple concurrent reads and writes. Note that libuv *can* read and
     // write simultaneously, it just can't read and read simultaneously.
-    priv read_access: Access,
-    priv write_access: Access,
+    read_access: Access,
+    write_access: Access,
 }
 
 pub struct TcpListener {
     home: HomeHandle,
     handle: *uvll::uv_pipe_t,
-    priv closing_task: Option<BlockedTask>,
-    priv outgoing: Sender<Result<~rtio::RtioTcpStream:Send, IoError>>,
-    priv incoming: Receiver<Result<~rtio::RtioTcpStream:Send, IoError>>,
+    closing_task: Option<BlockedTask>,
+    outgoing: Sender<Result<~rtio::RtioTcpStream:Send, IoError>>,
+    incoming: Receiver<Result<~rtio::RtioTcpStream:Send, IoError>>,
 }
 
 pub struct TcpAcceptor {
@@ -476,9 +476,9 @@ pub struct UdpWatcher {
     home: HomeHandle,
 
     // See above for what these fields are
-    priv refcount: Refcount,
-    priv read_access: Access,
-    priv write_access: Access,
+    refcount: Refcount,
+    read_access: Access,
+    write_access: Access,
 }
 
 impl UdpWatcher {
@@ -791,7 +791,7 @@ mod test {
                         Ok(10) => {} e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        assert_eq!(buf[i as uint], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -827,7 +827,7 @@ mod test {
                         Ok(10) => {} e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        assert_eq!(buf[i as uint], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -859,7 +859,7 @@ mod test {
                         e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        assert_eq!(buf[i as uint], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)
@@ -891,7 +891,7 @@ mod test {
                         e => fail!("{:?}", e),
                     }
                     for i in range(0, 10u8) {
-                        assert_eq!(buf[i], i + 1);
+                        assert_eq!(buf[i as uint], i + 1);
                     }
                 }
                 Err(e) => fail!("{:?}", e)

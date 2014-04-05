@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Container traits for extra
+//! Container traits for collections
 
 use std::container::Mutable;
 
@@ -52,7 +52,7 @@ pub mod bench {
                                                   map: &mut M,
                                                   bh: &mut BenchHarness) {
         // setup
-        let mut rng = rand::XorShiftRng::new();
+        let mut rng = rand::weak_rng();
 
         map.clear();
         for _ in range(0, n) {
@@ -89,7 +89,7 @@ pub mod bench {
                                                 map: &mut M,
                                                 bh: &mut BenchHarness) {
         // setup
-        let mut rng = rand::XorShiftRng::new();
+        let mut rng = rand::weak_rng();
         let mut keys = slice::from_fn(n, |_| rng.gen::<uint>() % n);
 
         for k in keys.iter() {

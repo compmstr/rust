@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-win32
+// ignore-win32: FIXME #13256
 // ignore-android: FIXME(#10381)
 
 // compile-flags:-g
@@ -211,8 +211,8 @@
 // check:$57 = 10
 // debugger:continue
 
-#[allow(unused_variable)];
-#[allow(dead_assignment)];
+#![allow(unused_variable)]
+#![allow(dead_assignment)]
 
 static mut MUT_INT: int = 0;
 
@@ -366,7 +366,7 @@ fn main() {
         zzz();
         sentinel();
 
-        val
+        val as uint
     }];
 
     zzz();

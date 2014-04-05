@@ -33,7 +33,7 @@ use std::hash::Hash;
 use std::io::MemWriter;
 use std::str;
 use collections::HashMap;
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::ast::*;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathElems};
@@ -69,14 +69,14 @@ pub type EncodeInlinedItem<'a> = 'a |ecx: &EncodeContext,
                                      ii: InlinedItemRef|;
 
 pub struct EncodeParams<'a> {
-    diag: &'a SpanHandler,
-    tcx: &'a ty::ctxt,
-    reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a RefCell<NodeMap<~str>>,
-    non_inlineable_statics: &'a RefCell<NodeSet>,
-    link_meta: &'a LinkMeta,
-    cstore: &'a cstore::CStore,
-    encode_inlined_item: EncodeInlinedItem<'a>,
+    pub diag: &'a SpanHandler,
+    pub tcx: &'a ty::ctxt,
+    pub reexports2: middle::resolve::ExportMap2,
+    pub item_symbols: &'a RefCell<NodeMap<~str>>,
+    pub non_inlineable_statics: &'a RefCell<NodeSet>,
+    pub link_meta: &'a LinkMeta,
+    pub cstore: &'a cstore::CStore,
+    pub encode_inlined_item: EncodeInlinedItem<'a>,
 }
 
 pub struct Stats {
@@ -96,16 +96,16 @@ pub struct Stats {
 }
 
 pub struct EncodeContext<'a> {
-    diag: &'a SpanHandler,
-    tcx: &'a ty::ctxt,
-    stats: @Stats,
-    reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a RefCell<NodeMap<~str>>,
-    non_inlineable_statics: &'a RefCell<NodeSet>,
-    link_meta: &'a LinkMeta,
-    cstore: &'a cstore::CStore,
-    encode_inlined_item: EncodeInlinedItem<'a>,
-    type_abbrevs: abbrev_map,
+    pub diag: &'a SpanHandler,
+    pub tcx: &'a ty::ctxt,
+    pub stats: @Stats,
+    pub reexports2: middle::resolve::ExportMap2,
+    pub item_symbols: &'a RefCell<NodeMap<~str>>,
+    pub non_inlineable_statics: &'a RefCell<NodeSet>,
+    pub link_meta: &'a LinkMeta,
+    pub cstore: &'a cstore::CStore,
+    pub encode_inlined_item: EncodeInlinedItem<'a>,
+    pub type_abbrevs: abbrev_map,
 }
 
 fn encode_name(ebml_w: &mut Encoder, name: Name) {
@@ -1217,7 +1217,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 nitem: &ForeignItem,
                                 index: @RefCell<Vec<entry<i64>> >,
                                 path: PathElems,
-                                abi: AbiSet) {
+                                abi: abi::Abi) {
     index.borrow_mut().push(entry {
         val: nitem.id as i64,
         pos: ebml_w.writer.tell().unwrap(),
@@ -1231,7 +1231,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(ebml_w, nitem.ident.name);
-        if abi.is_intrinsic() {
+        if abi == abi::RustIntrinsic {
             (ecx.encode_inlined_item)(ecx, ebml_w, IIForeignRef(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
@@ -1279,11 +1279,11 @@ fn my_visit_foreign_item(ni: &ForeignItem,
     let mut ebml_w = unsafe {
         ebml_w.unsafe_clone()
     };
-    let abis = ecx.tcx.map.get_foreign_abis(ni.id);
+    let abi = ecx.tcx.map.get_foreign_abi(ni.id);
     ecx.tcx.map.with_path(ni.id, |path| {
         encode_info_for_foreign_item(ecx, &mut ebml_w,
                                      ni, index,
-                                     path, abis);
+                                     path, abi);
     });
 }
 
@@ -1345,7 +1345,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
     }
 
     ebml_w.end_tag();
-    return /*bad*/(*index).get();
+    return /*bad*/index.borrow().clone();
 }
 
 
@@ -1365,7 +1365,7 @@ fn create_index<T:Clone + Hash + 'static>(
 
     let mut buckets_frozen = Vec::new();
     for bucket in buckets.iter() {
-        buckets_frozen.push(@/*bad*/(**bucket).get());
+        buckets_frozen.push(@/*bad*/bucket.borrow().clone());
     }
     return buckets_frozen;
 }

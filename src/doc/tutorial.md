@@ -100,9 +100,9 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~ {.notrust}
-$ curl -O http://static.rust-lang.org/dist/rust-0.9.tar.gz
-$ tar -xzf rust-0.9.tar.gz
-$ cd rust-0.9
+$ curl -O http://static.rust-lang.org/dist/rust-nightly.tar.gz
+$ tar -xzf rust-nightly.tar.gz
+$ cd rust-nightly
 $ ./configure
 $ make && make install
 ~~~~
@@ -117,8 +117,8 @@ When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
 API-documentation tool.
 
-[tarball]: http://static.rust-lang.org/dist/rust-0.9.tar.gz
-[win-exe]: http://static.rust-lang.org/dist/rust-0.9-install.exe
+[tarball]: http://static.rust-lang.org/dist/rust-nightly.tar.gz
+[win-exe]: http://static.rust-lang.org/dist/rust-nightly-install.exe
 
 ## Compiling your first program
 
@@ -504,13 +504,12 @@ matching in order to bind names to the contents of data types.
 
 ~~~~
 use std::f64;
-use std::num::atan;
 fn angle(vector: (f64, f64)) -> f64 {
     let pi = f64::consts::PI;
     match vector {
       (0.0, y) if y < 0.0 => 1.5 * pi,
       (0.0, _) => 0.5 * pi,
-      (x, y) => atan(y / x)
+      (x, y) => (y / x).atan()
     }
 }
 ~~~~
@@ -1409,20 +1408,17 @@ struct Point {
 ~~~~
 
 We can use this simple definition to allocate points in many different
-ways. For example, in this code, each of these three local variables
+ways. For example, in this code, each of these local variables
 contains a point, but allocated in a different location:
 
 ~~~
 # struct Point { x: f64, y: f64 }
 let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
-let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 ~~~
 
 Suppose we want to write a procedure that computes the distance
-between any two points, no matter where they are stored. For example,
-we might like to compute the distance between `on_the_stack` and
-`managed_box`, or between `managed_box` and `owned_box`. One option is
+between any two points, no matter where they are stored. One option is
 to define a function that takes two arguments of type point—that is,
 it takes the points by value. But this will cause the points to be
 copied when we call the function. For points, this is probably not so
@@ -1430,12 +1426,11 @@ bad, but often copies are expensive. So we’d like to define a function
 that takes the points by pointer. We can use references to do this:
 
 ~~~
-use std::num::sqrt;
 # struct Point { x: f64, y: f64 }
 fn compute_distance(p1: &Point, p2: &Point) -> f64 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
-    sqrt(x_d * x_d + y_d * y_d)
+    (x_d * x_d + y_d * y_d).sqrt()
 }
 ~~~
 
@@ -1444,11 +1439,9 @@ Now we can call `compute_distance()` in various ways:
 ~~~
 # struct Point{ x: f64, y: f64 };
 # let on_the_stack : Point  =  Point { x: 3.0, y: 4.0 };
-# let managed_box  : @Point = @Point { x: 5.0, y: 1.0 };
 # let owned_box    : ~Point = ~Point { x: 7.0, y: 9.0 };
 # fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }
-compute_distance(&on_the_stack, managed_box);
-compute_distance(managed_box, owned_box);
+compute_distance(&on_the_stack, owned_box);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
@@ -1458,11 +1451,11 @@ reference. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are creating an alias: that is, another
 route to the same data.
 
-In the case of the boxes `managed_box` and `owned_box`, however, no
+In the case of `owned_box`, however, no
 explicit action is necessary. The compiler will automatically convert
-a box like `@point` or `~point` to a reference like
+a box `~point` to a reference like
 `&point`. This is another form of borrowing; in this case, the
-contents of the managed/owned box are being lent out.
+contents of the owned box are being lent out.
 
 Whenever a value is borrowed, there are some limitations on what you
 can do with the original. For example, if the contents of a variable
@@ -1499,11 +1492,10 @@ Rust uses the unary star operator (`*`) to access the contents of a
 box or pointer, similarly to C.
 
 ~~~
-let managed = @10;
-let owned = ~20;
-let borrowed = &30;
+let owned = ~10;
+let borrowed = &20;
 
-let sum = *managed + *owned + *borrowed;
+let sum = *owned + *borrowed;
 ~~~
 
 Dereferenced mutable pointers may appear on the left hand side of
@@ -1511,14 +1503,13 @@ assignments. Such an assignment modifies the value that the pointer
 points to.
 
 ~~~
-let managed = @10;
-let mut owned = ~20;
+let mut owned = ~10;
 
-let mut value = 30;
+let mut value = 20;
 let borrowed = &mut value;
 
 *owned = *borrowed + 100;
-*borrowed = *managed + 1000;
+*borrowed = *owned + 1000;
 ~~~
 
 Pointers have high operator precedence, but lower precedence than the
@@ -1529,7 +1520,7 @@ can sometimes make code awkward and parenthesis-filled.
 # struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
-let start = @Point { x: 10.0, y: 20.0 };
+let start = ~Point { x: 10.0, y: 20.0 };
 let end = ~Point { x: (*start).x + 100.0, y: (*start).y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = (*rect).area();
@@ -1543,7 +1534,7 @@ dot), so in most cases, explicitly dereferencing the receiver is not necessary.
 # struct Point { x: f64, y: f64 }
 # enum Shape { Rectangle(Point, Point) }
 # impl Shape { fn area(&self) -> int { 0 } }
-let start = @Point { x: 10.0, y: 20.0 };
+let start = ~Point { x: 10.0, y: 20.0 };
 let end = ~Point { x: start.x + 100.0, y: start.y + 100.0 };
 let rect = &Rectangle(*start, *end);
 let area = rect.area();
@@ -1555,7 +1546,7 @@ something silly like
 
 ~~~
 # struct Point { x: f64, y: f64 }
-let point = &@~Point { x: 10.0, y: 20.0 };
+let point = &~Point { x: 10.0, y: 20.0 };
 println!("{:f}", point.x);
 ~~~
 
@@ -1783,8 +1774,8 @@ pervasively in Rust code.
 
 Owned closures, written `proc`,
 hold on to things that can safely be sent between
-processes. They copy the values they close over, much like managed
-closures, but they also own them: that is, no other code can access
+processes. They copy the values they close over,
+but they also own them: that is, no other code can access
 them. Owned closures are used in concurrent code, particularly
 for spawning [tasks][tasks].
 
@@ -1913,10 +1904,9 @@ to a reference.
 #    fn draw_value(self) { /* ... */ }
 # }
 # let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
-// As with typical function arguments, managed and owned pointers
+// As with typical function arguments, owned pointers
 // are automatically converted to references
 
-(@s).draw_reference();
 (~s).draw_reference();
 
 // Unlike typical function arguments, the self value will
@@ -1927,7 +1917,7 @@ s.draw_reference();
 (& &s).draw_reference();
 
 // ... and dereferenced and borrowed
-(&@~s).draw_reference();
+(&~s).draw_reference();
 ~~~
 
 Implementations may also define standalone (sometimes called "static")
@@ -2096,7 +2086,7 @@ and may not be overridden:
 
 * `Send` - Sendable types.
 Types are sendable
-unless they contain managed boxes, managed closures, or references.
+unless they contain references.
 
 * `Share` - Types that are *threadsafe*
 These are types that are safe to be used across several threads with access to
@@ -2109,7 +2099,7 @@ references, or types where the only contained references
 have the `'static` lifetime. (For more on named lifetimes and their uses,
 see the [references and lifetimes guide][lifetimes].)
 
-> ***Note:*** These two traits were referred to as 'kinds' in earlier
+> ***Note:*** These built-in traits were referred to as 'kinds' in earlier
 > iterations of the language, and often still are.
 
 Additionally, the `Drop` trait is used to define destructors. This
@@ -2303,7 +2293,7 @@ impl Shape for Circle {
     fn new(area: f64) -> Circle { Circle { radius: (area / PI).sqrt() } }
 }
 impl Shape for Square {
-    fn new(area: f64) -> Square { Square { length: (area).sqrt() } }
+    fn new(area: f64) -> Square { Square { length: area.sqrt() } }
 }
 
 let area = 42.5;
@@ -2412,7 +2402,7 @@ that, like strings and vectors, objects have dynamic size and may
 only be referred to via one of the pointer types.
 Other pointer types work as well.
 Casts to traits may only be done with compatible pointers so,
-for example, an `@Circle` may not be cast to an `~Drawable`.
+for example, an `&Circle` may not be cast to an `~Drawable`.
 
 ~~~
 # type Circle = int; type Rectangle = int;
@@ -2515,8 +2505,8 @@ use std::f64::consts::PI;
 # impl Circle for CircleStruct { fn radius(&self) -> f64 { (self.area() / PI).sqrt() } }
 # impl Shape for CircleStruct { fn area(&self) -> f64 { PI * square(self.radius) } }
 
-let concrete = @CircleStruct{center:Point{x:3.0,y:4.0},radius:5.0};
-let mycircle: @Circle = concrete as @Circle;
+let concrete = ~CircleStruct{center:Point{x:3.0,y:4.0},radius:5.0};
+let mycircle: ~Circle = concrete as ~Circle;
 let nonsense = mycircle.radius() * mycircle.area();
 ~~~
 
@@ -2602,8 +2592,6 @@ As you can see, your module hierarchy is now three modules deep: There is the cr
 function, and the module `farm`. The module `farm` also contains two functions and a third module `barn`,
 which contains a function `hay`.
 
-(In case you already stumbled over `extern crate`: It isn't directly related to a bare `mod`, we'll get to it later. )
-
 ## Paths and visibility
 
 We've now defined a nice module hierarchy. But how do we access the items in it from our `main` function?
@@ -2657,8 +2645,8 @@ Rust doesn't support encapsulation: both struct fields and methods can
 be private. But this encapsulation is at the module level, not the
 struct level.
 
-For convenience, fields are _public_ by default, and can be made _private_ with
-the `priv` keyword:
+Fields are _private_ by default, and can be made _public_ with
+the `pub` keyword:
 
 ~~~
 mod farm {
@@ -2667,8 +2655,8 @@ mod farm {
 # impl Human { pub fn rest(&self) { } }
 # pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], farmer: Human(0) } }
     pub struct Farm {
-        priv chickens: ~[Chicken],
-        farmer: Human
+        chickens: ~[Chicken],
+        pub farmer: Human
     }
 
     impl Farm {
@@ -2845,11 +2833,11 @@ use farm::cow;
 
 The path you give to `use` is per default global, meaning relative to the crate root,
 no matter how deep the module hierarchy is, or whether the module body it's written in
-is contained in its own file (remember: files are irrelevant).
+is contained in its own file. (Remember: files are irrelevant.)
 
-This is different to other languages, where you often only find a single import construct that combines the semantic
+This is different from other languages, where you often only find a single import construct that combines the semantic
 of `mod foo;` and `use`-statements, and which tend to work relative to the source file or use an absolute file path
-- Rubys `require` or C/C++'s `#include` come to mind.
+- Ruby's `require` or C/C++'s `#include` come to mind.
 
 However, it's also possible to import things relative to the module of the `use`-statement:
 Adding a `super::` in front of the path will start in the parent module,
@@ -3029,7 +3017,7 @@ The nested `barn` module is private, but the `pub use` allows users
 of the module `farm` to access a function from `barn` without needing
 to know that `barn` exists.
 
-In other words, you can use them to decouple an public api from their internal implementation.
+In other words, you can use it to decouple a public api from its internal implementation.
 
 ## Using libraries
 
@@ -3052,7 +3040,6 @@ fn main() {
 }
 ~~~
 
-Despite its name, `extern crate` is a distinct construct from regular `mod` declarations:
 A statement of the form `extern crate foo;` will cause `rustc` to search for the crate `foo`,
 and if it finds a matching binary it lets you use it from inside your crate.
 

@@ -48,9 +48,9 @@ pub enum Param {
 /// Container for static and dynamic variable arrays
 pub struct Variables {
     /// Static variables A-Z
-    priv sta: [Param, ..26],
+    sta: [Param, ..26],
     /// Dynamic variables a-z
-    priv dyn: [Param, ..26]
+    dyn: [Param, ..26]
 }
 
 impl Variables {
@@ -293,12 +293,12 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                 if cur >= 'A' && cur <= 'Z' {
                     if stack.len() > 0 {
                         let idx = (cur as u8) - ('A' as u8);
-                        vars.sta[idx] = stack.pop().unwrap();
+                        vars.sta[idx as uint] = stack.pop().unwrap();
                     } else { return Err(~"stack is empty") }
                 } else if cur >= 'a' && cur <= 'z' {
                     if stack.len() > 0 {
                         let idx = (cur as u8) - ('a' as u8);
-                        vars.dyn[idx] = stack.pop().unwrap();
+                        vars.dyn[idx as uint] = stack.pop().unwrap();
                     } else { return Err(~"stack is empty") }
                 } else {
                     return Err(~"bad variable name in %P");
@@ -307,10 +307,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             GetVar => {
                 if cur >= 'A' && cur <= 'Z' {
                     let idx = (cur as u8) - ('A' as u8);
-                    stack.push(vars.sta[idx].clone());
+                    stack.push(vars.sta[idx as uint].clone());
                 } else if cur >= 'a' && cur <= 'z' {
                     let idx = (cur as u8) - ('a' as u8);
-                    stack.push(vars.dyn[idx].clone());
+                    stack.push(vars.dyn[idx as uint].clone());
                 } else {
                     return Err(~"bad variable name in %g");
                 }
@@ -563,7 +563,6 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,~str> {
 mod test {
     use super::{expand,String,Variables,Number};
     use std::result::Ok;
-    use std::vec;
 
     #[test]
     fn test_basic_setabf() {
@@ -598,10 +597,8 @@ mod test {
             assert!(res.is_err(),
                     "Op {} succeeded incorrectly with 0 stack entries", *cap);
             let p = if *cap == "%s" || *cap == "%l" { String(~"foo") } else { Number(97) };
-            let res = expand(vec::append(bytes!("%p1").iter()
-                                                         .map(|x| *x)
-                                                         .collect(),
-                                            cap.as_bytes()).as_slice(),
+            let res = expand(bytes!("%p1").iter().map(|x| *x).collect::<Vec<_>>()
+                             .append(cap.as_bytes()).as_slice(),
                              [p],
                              vars);
             assert!(res.is_ok(),
@@ -612,18 +609,14 @@ mod test {
             let res = expand(cap.as_bytes(), [], vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 0 stack entries", *cap);
-            let res = expand(vec::append(bytes!("%{1}").iter()
-                                                          .map(|x| *x)
-                                                          .collect(),
-                                             cap.as_bytes()).as_slice(),
+            let res = expand(bytes!("%{1}").iter().map(|x| *x).collect::<Vec<_>>()
+                             .append(cap.as_bytes()).as_slice(),
                               [],
                               vars);
             assert!(res.is_err(),
                     "Binop {} succeeded incorrectly with 1 stack entry", *cap);
-            let res = expand(vec::append(bytes!("%{1}%{2}").iter()
-                                                              .map(|x| *x)
-                                                              .collect(),
-                                            cap.as_bytes()).as_slice(),
+            let res = expand(bytes!("%{1}%{2}").iter().map(|x| *x).collect::<Vec<_>>()
+                             .append(cap.as_bytes()).as_slice(),
                              [],
                              vars);
             assert!(res.is_ok(),

@@ -20,28 +20,21 @@ use middle::typeck;
 
 use reader = serialize::ebml::reader;
 use std::rc::Rc;
-use std::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::diagnostic::expect;
 use syntax::parse::token;
 
 pub struct StaticMethodInfo {
-    ident: ast::Ident,
-    def_id: ast::DefId,
-    purity: ast::Purity,
-    vis: ast::Visibility,
+    pub ident: ast::Ident,
+    pub def_id: ast::DefId,
+    pub purity: ast::Purity,
+    pub vis: ast::Visibility,
 }
 
 pub fn get_symbol(cstore: &cstore::CStore, def: ast::DefId) -> ~str {
     let cdata = cstore.get_crate_data(def.krate).data();
     return decoder::get_symbol(cdata, def.node);
-}
-
-pub fn get_type_param_count(cstore: &cstore::CStore, def: ast::DefId)
-                         -> uint {
-    let cdata = cstore.get_crate_data(def.krate).data();
-    return decoder::get_type_param_count(cdata, def.node);
 }
 
 /// Iterates over all the language items in the given crate.
@@ -93,8 +86,7 @@ pub fn get_item_path(tcx: &ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> 
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec::append(vec!(ast_map::PathMod(token::intern(cdata.name))),
-                   path.as_slice())
+    (vec!(ast_map::PathMod(token::intern(cdata.name)))).append(path.as_slice())
 }
 
 pub enum found_ast {
@@ -246,21 +238,6 @@ pub fn get_impl_vtables(tcx: &ty::ctxt,
     decoder::get_impl_vtables(cdata, def.node, tcx)
 }
 
-pub fn get_impl_method(cstore: &cstore::CStore,
-                       def: ast::DefId,
-                       mname: ast::Ident)
-                    -> Option<ast::DefId> {
-    let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_impl_method(cstore.intr.clone(), cdata, def.node, mname)
-}
-
-pub fn get_item_visibility(cstore: &cstore::CStore,
-                           def_id: ast::DefId)
-                        -> ast::Visibility {
-    let cdata = cstore.get_crate_data(def_id.krate);
-    decoder::get_item_visibility(cdata, def_id.node)
-}
-
 pub fn get_native_libraries(cstore: &cstore::CStore,
                             crate_num: ast::CrateNum)
                                 -> Vec<(cstore::NativeLibaryKind, ~str)> {
@@ -312,4 +289,12 @@ pub fn get_exported_macros(cstore: &cstore::CStore,
                            -> Vec<~str> {
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_exported_macros(cdata)
+}
+
+pub fn get_tuple_struct_definition_if_ctor(cstore: &cstore::CStore,
+                                           def_id: ast::DefId)
+    -> Option<ast::DefId>
+{
+    let cdata = cstore.get_crate_data(def_id.krate);
+    decoder::get_tuple_struct_definition_if_ctor(cdata, def_id.node)
 }

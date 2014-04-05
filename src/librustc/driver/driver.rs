@@ -37,7 +37,6 @@ use std::io::fs;
 use std::io::MemReader;
 use std::mem::drop;
 use std::os;
-use std::vec;
 use getopts::{optopt, optmulti, optflag, optflagopt};
 use getopts;
 use syntax::ast;
@@ -137,8 +136,7 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
     } else {
         InternedString::new("nogc")
     });
-    return vec::append(user_cfg.move_iter().collect(),
-                          default_cfg.as_slice());
+    user_cfg.move_iter().collect::<Vec<_>>().append(default_cfg.as_slice())
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
@@ -214,9 +212,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(&sess.opts, &krate));
-    sess.crate_types.set(session::collect_crate_types(sess,
-                                                      krate.attrs
-                                                           .as_slice()));
+    *sess.crate_types.borrow_mut() = session::collect_crate_types(sess, krate.attrs.as_slice());
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &krate));
@@ -272,12 +268,12 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 }
 
 pub struct CrateAnalysis {
-    exp_map2: middle::resolve::ExportMap2,
-    exported_items: middle::privacy::ExportedItems,
-    public_items: middle::privacy::PublicItems,
-    ty_cx: ty::ctxt,
-    maps: astencode::Maps,
-    reachable: NodeSet,
+    pub exp_map2: middle::resolve::ExportMap2,
+    pub exported_items: middle::privacy::ExportedItems,
+    pub public_items: middle::privacy::PublicItems,
+    pub ty_cx: ty::ctxt,
+    pub maps: astencode::Maps,
+    pub reachable: NodeSet,
 }
 
 /// Run the resolution, typechecking, region checking and other
@@ -327,6 +323,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     let region_map = time(time_passes, "region resolution", (), |_|
                           middle::region::resolve_crate(&sess, krate));
 
+    time(time_passes, "loop checking", (), |_|
+         middle::check_loop::check_crate(&sess, krate));
+
     let ty_cx = ty::mk_ctxt(sess, def_map, named_region_map, ast_map,
                             freevars, region_map, lang_items);
 
@@ -351,9 +350,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     time(time_passes, "effect checking", (), |_|
          middle::effect::check_crate(&ty_cx, method_map, krate));
-
-    time(time_passes, "loop checking", (), |_|
-         middle::check_loop::check_crate(&ty_cx, krate));
 
     let middle::moves::MoveMaps {moves_map, moved_variables_set,
                                  capture_map} =
@@ -411,12 +407,12 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 }
 
 pub struct CrateTranslation {
-    context: ContextRef,
-    module: ModuleRef,
-    metadata_module: ModuleRef,
-    link: LinkMeta,
-    metadata: Vec<u8> ,
-    reachable: Vec<~str> ,
+    pub context: ContextRef,
+    pub module: ModuleRef,
+    pub metadata_module: ModuleRef,
+    pub link: LinkMeta,
+    pub metadata: Vec<u8>,
+    pub reachable: Vec<~str>,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
@@ -836,9 +832,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> session::Options {
 
         let level_short = level_name.slice_chars(0, 1);
         let level_short = level_short.to_ascii().to_upper().into_str();
-        let flags = vec::append(matches.opt_strs(level_short)
-                                          .move_iter()
-                                          .collect(),
+        let flags = matches.opt_strs(level_short).move_iter().collect::<Vec<_>>().append(
                                    matches.opt_strs(level_name).as_slice());
         for lint_name in flags.iter() {
             let lint_name = lint_name.replace("-", "_");
@@ -1128,9 +1122,9 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
 }
 
 pub struct OutputFilenames {
-    out_directory: Path,
-    out_filestem: ~str,
-    single_output_file: Option<Path>,
+    pub out_directory: Path,
+    pub out_filestem: ~str,
+    pub single_output_file: Option<Path>,
 }
 
 impl OutputFilenames {

@@ -173,15 +173,15 @@ static DW_ATE_unsigned_char: c_uint = 0x08;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub struct CrateDebugContext {
-    priv llcontext: ContextRef,
-    priv builder: DIBuilderRef,
-    priv current_debug_location: Cell<DebugLocation>,
-    priv created_files: RefCell<HashMap<~str, DIFile>>,
-    priv created_types: RefCell<HashMap<uint, DIType>>,
-    priv namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
+    llcontext: ContextRef,
+    builder: DIBuilderRef,
+    current_debug_location: Cell<DebugLocation>,
+    created_files: RefCell<HashMap<~str, DIFile>>,
+    created_types: RefCell<HashMap<uint, DIType>>,
+    namespace_map: RefCell<HashMap<Vec<ast::Name> , @NamespaceTreeNode>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
-    priv composite_types_completed: RefCell<HashSet<DIType>>,
+    composite_types_completed: RefCell<HashSet<DIType>>,
 }
 
 impl CrateDebugContext {
@@ -2129,7 +2129,7 @@ fn type_metadata(cx: &CrateContext,
             let i8_t = ty::mk_i8();
             match *vstore {
                 ty::vstore_fixed(len) => {
-                    fixed_vec_metadata(cx, i8_t, len + 1, usage_site_span)
+                    fixed_vec_metadata(cx, i8_t, len, usage_site_span)
                 },
                 ty::vstore_uniq  => {
                     let vec_metadata = vec_metadata(cx, i8_t, usage_site_span);
@@ -2619,15 +2619,15 @@ fn populate_scope_map(cx: &CrateContext,
                 walk_expr(cx, rhs, scope_stack, scope_map);
             }
 
-            ast::ExprVec(ref init_expressions, _) |
-            ast::ExprTup(ref init_expressions)    => {
+            ast::ExprVec(ref init_expressions) |
+            ast::ExprTup(ref init_expressions) => {
                 for ie in init_expressions.iter() {
                     walk_expr(cx, *ie, scope_stack, scope_map);
                 }
             }
 
-            ast::ExprAssign(sub_exp1, sub_exp2)    |
-            ast::ExprRepeat(sub_exp1, sub_exp2, _) => {
+            ast::ExprAssign(sub_exp1, sub_exp2) |
+            ast::ExprRepeat(sub_exp1, sub_exp2) => {
                 walk_expr(cx, sub_exp1, scope_stack, scope_map);
                 walk_expr(cx, sub_exp2, scope_stack, scope_map);
             }

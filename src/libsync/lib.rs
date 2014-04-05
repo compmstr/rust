@@ -12,7 +12,7 @@
  * Concurrency-enabled mechanisms and primitives.
  */
 
-#![crate_id = "sync#0.10-pre"]
+#![crate_id = "sync#0.11-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
@@ -20,7 +20,9 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![feature(phase)]
-#![deny(missing_doc, deprecated_owned_vector)]
+#![deny(deprecated_owned_vector)]
+
+#![deny(missing_doc)]
 
 #[cfg(test)]
 #[phase(syntax, link)] extern crate log;

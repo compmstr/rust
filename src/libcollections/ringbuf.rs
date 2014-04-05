@@ -11,7 +11,7 @@
 //! A double-ended queue implemented as a circular buffer
 //!
 //! RingBuf implements the trait Deque. It should be imported with `use
-//! extra::container::Deque`.
+//! collections::deque::Deque`.
 
 use std::cmp;
 use std::slice;
@@ -25,9 +25,9 @@ static MINIMUM_CAPACITY: uint = 2u;
 /// RingBuf is a circular buffer that implements Deque.
 #[deriving(Clone)]
 pub struct RingBuf<T> {
-    priv nelts: uint,
-    priv lo: uint,
-    priv elts: ~[Option<T>]
+    nelts: uint,
+    lo: uint,
+    elts: ~[Option<T>]
 }
 
 impl<T> Container for RingBuf<T> {
@@ -230,10 +230,10 @@ impl<T> RingBuf<T> {
 
 /// RingBuf iterator
 pub struct Items<'a, T> {
-    priv lo: uint,
-    priv index: uint,
-    priv rindex: uint,
-    priv elts: &'a [Option<T>],
+    lo: uint,
+    index: uint,
+    rindex: uint,
+    elts: &'a [Option<T>],
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {
@@ -285,9 +285,9 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 
 /// RingBuf mutable iterator
 pub struct MutItems<'a, T> {
-    priv remaining1: &'a mut [Option<T>],
-    priv remaining2: &'a mut [Option<T>],
-    priv nelts: uint,
+    remaining1: &'a mut [Option<T>],
+    remaining2: &'a mut [Option<T>],
+    nelts: uint,
 }
 
 impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
@@ -386,7 +386,7 @@ impl<A: Eq> Eq for RingBuf<A> {
 }
 
 impl<A> FromIterator<A> for RingBuf<A> {
-    fn from_iterator<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
+    fn from_iter<T: Iterator<A>>(iterator: T) -> RingBuf<A> {
         let (lower, _) = iterator.size_hint();
         let mut deq = RingBuf::with_capacity(lower);
         deq.extend(iterator);
@@ -778,7 +778,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_iterator() {
+    fn test_from_iter() {
         use std::iter;
         let v = ~[1,2,3,4,5,6,7];
         let deq: RingBuf<int> = v.iter().map(|&x| x).collect();

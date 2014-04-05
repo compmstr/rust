@@ -53,6 +53,7 @@ PKG_FILES := \
       driver                                   \
       etc                                      \
       $(foreach crate,$(CRATES),lib$(crate))   \
+      libbacktrace                             \
       rt                                       \
       rustllvm                                 \
       snapshots.txt                            \
@@ -78,6 +79,7 @@ $(PKG_TAR): $(PKG_FILES)
          --exclude=*/llvm/test/*/*/*.td \
          --exclude=*/llvm/test/*/*/*.s \
          -c $(UNROOTED_PKG_FILES) | tar -x -C tmp/dist/$(PKG_NAME)
+	@$(call E, making $@)
 	$(Q)tar -czf $(PKG_TAR) -C tmp/dist $(PKG_NAME)
 	$(Q)rm -Rf tmp/dist/$(PKG_NAME)
 
@@ -171,7 +173,7 @@ dist/$(PKG_NAME)-$(1).pkg: $(S)src/etc/pkg/Distribution.xml LICENSE.txt \
 	      --resources tmp/dist/pkgres-$(1) dist/$(PKG_NAME)-$(1).pkg
 	$(Q)rm -rf tmp rust.pkg
 
-tmp/dist/pkgres-$(1)/LICENSE.txt: $(S)/LICENSE.txt
+tmp/dist/pkgres-$(1)/LICENSE.txt: LICENSE.txt
 	@$$(call E,pkg resource LICENSE.txt)
 	$(Q)mkdir -p $$(@D)
 	$(Q)cp $$< $$@
@@ -213,7 +215,7 @@ dist-install-dir-$(1): PREPARE_BIN_CMD=$(DEFAULT_PREPARE_BIN_CMD)
 dist-install-dir-$(1): PREPARE_LIB_CMD=$(DEFAULT_PREPARE_LIB_CMD)
 dist-install-dir-$(1): PREPARE_MAN_CMD=$(DEFAULT_PREPARE_MAN_CMD)
 dist-install-dir-$(1): PREPARE_CLEAN=true
-dist-install-dir-$(1): prepare-base-dir-$(1)
+dist-install-dir-$(1): prepare-base-dir-$(1) docs compiler-docs
 	$$(Q)(cd $$(PREPARE_DEST_DIR)/ && find . -type f | sed 's/^\.\///') \
       > tmp/dist/manifest-$(1).in
 	$$(Q)mv tmp/dist/manifest-$(1).in $$(PREPARE_DEST_DIR)/$$(CFG_LIBDIR_RELATIVE)/rustlib/manifest.in
@@ -222,6 +224,7 @@ dist-install-dir-$(1): prepare-base-dir-$(1)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-APACHE $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)LICENSE-MIT $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_MAN_CMD) $$(S)README.md $$(PREPARE_DEST_DIR)
+	$$(Q)cp -r doc $$(PREPARE_DEST_DIR)
 	$$(Q)$$(PREPARE_BIN_CMD) $$(S)src/etc/install.sh $$(PREPARE_DEST_DIR)
 
 dist/$$(PKG_NAME)-$(1).tar.gz: dist-install-dir-$(1)
@@ -247,6 +250,7 @@ distcheck-tar-bins: dist-tar-bins
 	$(Q)mkdir -p tmp/distcheck/tarbininstall
 	$(Q)sh tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix=tmp/distcheck/tarbininstall
 	$(Q)tmp/distcheck/tarbininstall/bin/rustc --version
+	$(Q)sh tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix=tmp/distcheck/tarbininstall --uninstall
 	$(Q)rm -Rf tmp/distcheck/$(PKG_NAME)-$(CFG_BUILD)
 	$(Q)rm -Rf tmp/distcheck/tarbininstall
 
@@ -280,9 +284,19 @@ distcheck: distcheck-win
 
 else
 
-dist: dist-tar-src dist-osx dist-tar-bins dist-docs
+# FIXME #13224: On OS X don't produce tarballs simply because --exclude-vcs don't work.
+# This is a huge hack because I just don't have time to figure out another solution.
+ifeq ($(CFG_OSTYPE), apple-darwin)
+MAYBE_DIST_TAR_SRC=
+MAYBE_DISTCHECK_TAR_SRC=
+else
+MAYBE_DIST_TAR_SRC=dist-tar-src
+MAYBE_DISTCHECK_TAR_SRC=distcheck-tar-src
+endif
 
-distcheck: distcheck-tar-src distcheck-osx distcheck-tar-bins distcheck-docs
+dist: $(MAYBE_DIST_TAR_SRC) dist-osx dist-tar-bins dist-docs
+
+distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-osx distcheck-tar-bins distcheck-docs
 	$(Q)rm -Rf tmp/distcheck
 	@echo
 	@echo -----------------------------------------------

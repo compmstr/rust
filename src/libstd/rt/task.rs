@@ -43,22 +43,22 @@ use unstable::finally::Finally;
 /// in the struct. This contains a pointer to another struct that holds
 /// the type-specific state.
 pub struct Task {
-    heap: LocalHeap,
-    gc: GarbageCollector,
-    storage: LocalStorage,
-    unwinder: Unwinder,
-    death: Death,
-    destroyed: bool,
-    name: Option<SendStr>,
+    pub heap: LocalHeap,
+    pub gc: GarbageCollector,
+    pub storage: LocalStorage,
+    pub unwinder: Unwinder,
+    pub death: Death,
+    pub destroyed: bool,
+    pub name: Option<SendStr>,
 
-    stdout: Option<~Writer:Send>,
-    stderr: Option<~Writer:Send>,
+    pub stdout: Option<~Writer:Send>,
+    pub stderr: Option<~Writer:Send>,
 
-    priv imp: Option<~Runtime:Send>,
+    imp: Option<~Runtime:Send>,
 }
 
 pub struct GarbageCollector;
-pub struct LocalStorage(Option<local_data::Map>);
+pub struct LocalStorage(pub Option<local_data::Map>);
 
 /// A handle to a blocked task. Usually this means having the ~Task pointer by
 /// ownership, but if the task is killable, a killer can steal it at any time.
@@ -77,11 +77,11 @@ pub enum DeathAction {
 
 /// Per-task state related to task death, killing, failure, etc.
 pub struct Death {
-    on_exit: Option<DeathAction>,
+    pub on_exit: Option<DeathAction>,
 }
 
 pub struct BlockedTasks {
-    priv inner: UnsafeArc<AtomicUint>,
+    inner: UnsafeArc<AtomicUint>,
 }
 
 impl Task {
@@ -435,7 +435,7 @@ mod test {
     #[test]
     fn rng() {
         use rand::{StdRng, Rng};
-        let mut r = StdRng::new();
+        let mut r = StdRng::new().unwrap();
         let _ = r.next_u32();
     }
 

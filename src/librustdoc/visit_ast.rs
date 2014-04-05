@@ -11,7 +11,7 @@
 //! Rust AST Visitor. Extracts useful information and massages it into a form
 //! usable for clean
 
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_map;
@@ -21,10 +21,10 @@ use core;
 use doctree::*;
 
 pub struct RustdocVisitor<'a> {
-    module: Module,
-    attrs: Vec<ast::Attribute> ,
-    cx: &'a core::DocContext,
-    analysis: Option<&'a core::CrateAnalysis>,
+    pub module: Module,
+    pub attrs: Vec<ast::Attribute>,
+    pub cx: &'a core::DocContext,
+    pub analysis: Option<&'a core::CrateAnalysis>,
 }
 
 impl<'a> RustdocVisitor<'a> {
@@ -95,7 +95,7 @@ impl<'a> RustdocVisitor<'a> {
     }
 
     pub fn visit_fn(&mut self, item: &ast::Item, fd: &ast::FnDecl,
-                    purity: &ast::Purity, _abi: &AbiSet,
+                    purity: &ast::Purity, _abi: &abi::Abi,
                     gen: &ast::Generics) -> Function {
         debug!("Visiting fn");
         Function {

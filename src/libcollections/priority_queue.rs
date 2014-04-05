@@ -19,7 +19,7 @@ use std::slice;
 /// A priority queue implemented with a binary heap
 #[deriving(Clone)]
 pub struct PriorityQueue<T> {
-    priv data: ~[T],
+    data: ~[T],
 }
 
 impl<T:Ord> Container for PriorityQueue<T> {
@@ -117,6 +117,11 @@ impl<T:Ord> PriorityQueue<T> {
     /// Create an empty PriorityQueue
     pub fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
 
+    /// Create an empty PriorityQueue with capacity `capacity`
+    pub fn with_capacity(capacity: uint) -> PriorityQueue<T> {
+        PriorityQueue { data: slice::with_capacity(capacity) }
+    }
+
     /// Create a PriorityQueue from a vector (heapify)
     pub fn from_vec(xs: ~[T]) -> PriorityQueue<T> {
         let mut q = PriorityQueue{data: xs,};
@@ -181,7 +186,7 @@ impl<T:Ord> PriorityQueue<T> {
 
 /// PriorityQueue iterator
 pub struct Items <'a, T> {
-    priv iter: slice::Items<'a, T>,
+    iter: slice::Items<'a, T>,
 }
 
 impl<'a, T> Iterator<&'a T> for Items<'a, T> {
@@ -193,7 +198,7 @@ impl<'a, T> Iterator<&'a T> for Items<'a, T> {
 }
 
 impl<T: Ord> FromIterator<T> for PriorityQueue<T> {
-    fn from_iterator<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T> {
+    fn from_iter<Iter: Iterator<T>>(iter: Iter) -> PriorityQueue<T> {
         let mut q = PriorityQueue::new();
         q.extend(iter);
         q

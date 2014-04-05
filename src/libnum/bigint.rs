@@ -28,7 +28,6 @@ use rand::Rng;
 use std::str;
 use std::uint;
 use std::{i64, u64};
-use std::vec;
 
 /**
 A `BigDigit` is a `BigUint`'s composing element.
@@ -87,7 +86,7 @@ A `BigUint`-typed value `BigUint { data: ~[a, b, c] }` represents a number
 */
 #[deriving(Clone)]
 pub struct BigUint {
-    priv data: Vec<BigDigit>
+    data: Vec<BigDigit>
 }
 
 impl Eq for BigUint {
@@ -747,8 +746,7 @@ impl BigUint {
     fn shl_unit(&self, n_unit: uint) -> BigUint {
         if n_unit == 0 || self.is_zero() { return (*self).clone(); }
 
-        return BigUint::new(vec::append(Vec::from_elem(n_unit, ZERO_BIG_DIGIT),
-                                           self.data.as_slice()));
+        BigUint::new(Vec::from_elem(n_unit, ZERO_BIG_DIGIT).append(self.data.as_slice()))
     }
 
     #[inline]
@@ -865,8 +863,8 @@ impl Neg<Sign> for Sign {
 /// A big signed integer type.
 #[deriving(Clone)]
 pub struct BigInt {
-    priv sign: Sign,
-    priv data: BigUint
+    sign: Sign,
+    data: BigUint
 }
 
 impl Eq for BigInt {

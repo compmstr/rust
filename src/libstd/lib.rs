@@ -43,7 +43,7 @@
 //!
 //!     use std::prelude::*;
 
-#![crate_id = "std#0.10-pre"]
+#![crate_id = "std#0.11-pre"]
 #![comment = "The Rust standard library"]
 #![license = "MIT/ASL2"]
 #![crate_type = "rlib"]
@@ -52,12 +52,13 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://static.rust-lang.org/doc/master")]
 #![feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args,
-           simd, linkage, default_type_params, phase)]
+           simd, linkage, default_type_params, phase, concat_idents)]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![deny(missing_doc)]
+#![allow(unknown_features)] // NOTE: remove after a stage0 snap
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
@@ -204,8 +205,6 @@ pub mod raw;
 /* For internal use, not exported */
 
 mod unicode;
-#[path = "num/cmath.rs"]
-mod cmath;
 
 // FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.
@@ -232,4 +231,5 @@ mod std {
     pub use to_str;
     pub use ty;
     pub use unstable;
+    pub use vec;
 }

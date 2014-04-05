@@ -26,9 +26,9 @@ pub enum FileMatch { FileMatches, FileDoesntMatch }
 pub type pick<'a> = 'a |path: &Path| -> FileMatch;
 
 pub struct FileSearch<'a> {
-    sysroot: &'a Path,
-    addl_lib_search_paths: &'a RefCell<HashSet<Path>>,
-    target_triple: &'a str
+    pub sysroot: &'a Path,
+    pub addl_lib_search_paths: &'a RefCell<HashSet<Path>>,
+    pub target_triple: &'a str
 }
 
 impl<'a> FileSearch<'a> {
@@ -82,12 +82,6 @@ impl<'a> FileSearch<'a> {
 
     pub fn get_target_lib_path(&self) -> Path {
         make_target_lib_path(self.sysroot, self.target_triple)
-    }
-
-    pub fn get_target_lib_file_path(&self, file: &Path) -> Path {
-        let mut p = self.get_target_lib_path();
-        p.push(file);
-        p
     }
 
     pub fn search(&self, pick: pick) {

@@ -90,7 +90,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     fn fold_item(&mut self, i: @ast::Item) -> SmallVector<@ast::Item> {
         self.cx.path.borrow_mut().push(i.ident);
         debug!("current path: {}",
-               ast_util::path_name_i(self.cx.path.get().as_slice()));
+               ast_util::path_name_i(self.cx.path.borrow().as_slice()));
 
         if is_test_fn(&self.cx, i) || is_bench_fn(&self.cx, i) {
             match i.node {
@@ -104,7 +104,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     debug!("this is a test function");
                     let test = Test {
                         span: i.span,
-                        path: self.cx.path.get(),
+                        path: self.cx.path.borrow().clone(),
                         bench: is_bench_fn(&self.cx, i),
                         ignore: is_ignored(&self.cx, i),
                         should_fail: should_fail(i)
@@ -272,7 +272,7 @@ fn should_fail(i: @ast::Item) -> bool {
 fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
     let testmod = mk_test_module(cx);
     ast::Mod {
-        items: vec::append_one(m.items.clone(), testmod),
+        items: m.items.clone().append_one(testmod),
         ..(*m).clone()
     }
 }
@@ -404,21 +404,17 @@ fn is_test_crate(krate: &ast::Crate) -> bool {
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
-    let mut descs = Vec::new();
     debug!("building test vector from {} tests", cx.testfns.borrow().len());
-    for test in cx.testfns.borrow().iter() {
-        descs.push(mk_test_desc_and_fn_rec(cx, test));
-    }
-
-    let inner_expr = @ast::Expr {
-        id: ast::DUMMY_NODE_ID,
-        node: ast::ExprVec(descs, ast::MutImmutable),
-        span: DUMMY_SP,
-    };
 
     @ast::Expr {
         id: ast::DUMMY_NODE_ID,
-        node: ast::ExprVstore(inner_expr, ast::ExprVstoreSlice),
+        node: ast::ExprVstore(@ast::Expr {
+            id: ast::DUMMY_NODE_ID,
+            node: ast::ExprVec(cx.testfns.borrow().iter().map(|test| {
+                mk_test_desc_and_fn_rec(cx, test)
+            }).collect()),
+            span: DUMMY_SP,
+        }, ast::ExprVstoreSlice),
         span: DUMMY_SP,
     }
 }

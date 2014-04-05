@@ -23,7 +23,7 @@ use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_unboxed_vec, ty_infer};
 use middle::ty;
 use middle::typeck;
 
-use syntax::abi::AbiSet;
+use syntax::abi;
 use syntax::ast_map;
 use syntax::codemap::{Span, Pos};
 use syntax::parse::token;
@@ -57,14 +57,6 @@ pub fn note_and_explain_region(cx: &ctxt,
       }
     }
 }
-
-/// Returns a string like "the block at 27:31" that attempts to explain a
-/// lifetime in a way it might plausibly be understood.
-pub fn explain_region(cx: &ctxt, region: ty::Region) -> ~str {
-  let (res, _) = explain_region_and_span(cx, region);
-  return res;
-}
-
 
 pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
                             -> (~str, Option<Span>) {
@@ -165,42 +157,6 @@ pub fn bound_region_to_str(cx: &ctxt,
     }
 }
 
-pub fn ReScope_id_to_str(cx: &ctxt, node_id: ast::NodeId) -> ~str {
-    match cx.map.find(node_id) {
-      Some(ast_map::NodeBlock(ref blk)) => {
-        format!("<block at {}>",
-             cx.sess.codemap().span_to_str(blk.span))
-      }
-      Some(ast_map::NodeExpr(expr)) => {
-        match expr.node {
-          ast::ExprCall(..) => {
-            format!("<call at {}>",
-                 cx.sess.codemap().span_to_str(expr.span))
-          }
-          ast::ExprMatch(..) => {
-            format!("<match at {}>",
-                 cx.sess.codemap().span_to_str(expr.span))
-          }
-          ast::ExprAssignOp(..) |
-          ast::ExprUnary(..) |
-          ast::ExprBinary(..) |
-          ast::ExprIndex(..) => {
-            format!("<method at {}>",
-                 cx.sess.codemap().span_to_str(expr.span))
-          }
-          _ => {
-            format!("<expression at {}>",
-                 cx.sess.codemap().span_to_str(expr.span))
-          }
-        }
-      }
-      None => {
-        format!("<unknown-{}>", node_id)
-      }
-      _ => cx.sess.bug(format!("ReScope refers to {}", cx.map.node_to_str(node_id)))
-    }
-}
-
 // In general, if you are giving a region error message,
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
@@ -280,10 +236,6 @@ pub fn vec_map_to_str<T>(ts: &[T], f: |t: &T| -> ~str) -> ~str {
     format!("[{}]", tstrs.connect(", "))
 }
 
-pub fn tys_to_str(cx: &ctxt, ts: &[t]) -> ~str {
-    vec_map_to_str(ts, |t| ty_to_str(cx, *t))
-}
-
 pub fn fn_sig_to_str(cx: &ctxt, typ: &ty::FnSig) -> ~str {
     format!("fn{}{} -> {}",
             typ.binder_id,
@@ -301,14 +253,14 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
     }
     fn bare_fn_to_str(cx: &ctxt,
                       purity: ast::Purity,
-                      abis: AbiSet,
+                      abi: abi::Abi,
                       ident: Option<ast::Ident>,
                       sig: &ty::FnSig)
                       -> ~str {
-        let mut s = if abis.is_rust() {
+        let mut s = if abi == abi::Rust {
             ~""
         } else {
-            format!("extern {} ", abis.to_str())
+            format!("extern {} ", abi.to_str())
         };
 
         match purity {
@@ -454,7 +406,7 @@ pub fn ty_to_str(cx: &ctxt, typ: t) -> ~str {
           closure_to_str(cx, *f)
       }
       ty_bare_fn(ref f) => {
-          bare_fn_to_str(cx, f.purity, f.abis, None, &f.sig)
+          bare_fn_to_str(cx, f.purity, f.abi, None, &f.sig)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
@@ -861,9 +813,9 @@ impl Repr for ast::Visibility {
 
 impl Repr for ty::BareFnTy {
     fn repr(&self, tcx: &ctxt) -> ~str {
-        format!("BareFnTy \\{purity: {:?}, abis: {}, sig: {}\\}",
+        format!("BareFnTy \\{purity: {:?}, abi: {}, sig: {}\\}",
              self.purity,
-             self.abis.to_str(),
+             self.abi.to_str(),
              self.sig.repr(tcx))
     }
 }
@@ -1016,13 +968,13 @@ impl UserString for ast::Ident {
     }
 }
 
-impl Repr for AbiSet {
+impl Repr for abi::Abi {
     fn repr(&self, _tcx: &ctxt) -> ~str {
         self.to_str()
     }
 }
 
-impl UserString for AbiSet {
+impl UserString for abi::Abi {
     fn user_string(&self, _tcx: &ctxt) -> ~str {
         self.to_str()
     }

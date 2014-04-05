@@ -233,10 +233,10 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function.
 pub struct Splits<'a, T> {
-    priv v: &'a [T],
-    priv n: uint,
-    priv pred: 'a |t: &T| -> bool,
-    priv finished: bool
+    v: &'a [T],
+    n: uint,
+    pred: 'a |t: &T| -> bool,
+    finished: bool
 }
 
 impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
@@ -282,10 +282,10 @@ impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function, from back to front.
 pub struct RevSplits<'a, T> {
-    priv v: &'a [T],
-    priv n: uint,
-    priv pred: 'a |t: &T| -> bool,
-    priv finished: bool
+    v: &'a [T],
+    n: uint,
+    pred: 'a |t: &T| -> bool,
+    finished: bool
 }
 
 impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
@@ -411,9 +411,9 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (~[T], ~[U]) {
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
 pub struct ElementSwaps {
-    priv sdir: ~[SizeDirection],
+    sdir: ~[SizeDirection],
     /// If true, emit the last swap that returns the sequence to initial state
-    priv emit_reset: bool,
+    emit_reset: bool,
 }
 
 impl ElementSwaps {
@@ -486,8 +486,8 @@ impl Iterator<(uint, uint)> for ElementSwaps {
 ///
 /// Generates even and odd permutations alternately.
 pub struct Permutations<T> {
-    priv swaps: ElementSwaps,
-    priv v: ~[T],
+    swaps: ElementSwaps,
+    v: ~[T],
 }
 
 impl<T: Clone> Iterator<~[T]> for Permutations<T> {
@@ -508,8 +508,8 @@ impl<T: Clone> Iterator<~[T]> for Permutations<T> {
 /// a vector.
 #[deriving(Clone)]
 pub struct Windows<'a, T> {
-    priv v: &'a [T],
-    priv size: uint
+    v: &'a [T],
+    size: uint
 }
 
 impl<'a, T> Iterator<&'a [T]> for Windows<'a, T> {
@@ -542,8 +542,8 @@ impl<'a, T> Iterator<&'a [T]> for Windows<'a, T> {
 /// the last slice of the iteration will be the remainder.
 #[deriving(Clone)]
 pub struct Chunks<'a, T> {
-    priv v: &'a [T],
-    priv size: uint
+    v: &'a [T],
+    size: uint
 }
 
 impl<'a, T> Iterator<&'a [T]> for Chunks<'a, T> {
@@ -2632,17 +2632,17 @@ impl<A> Default for ~[A] {
 
 /// Immutable slice iterator
 pub struct Items<'a, T> {
-    priv ptr: *T,
-    priv end: *T,
-    priv marker: marker::ContravariantLifetime<'a>
+    ptr: *T,
+    end: *T,
+    marker: marker::ContravariantLifetime<'a>
 }
 
 /// Mutable slice iterator
 pub struct MutItems<'a, T> {
-    priv ptr: *mut T,
-    priv end: *mut T,
-    priv marker: marker::ContravariantLifetime<'a>,
-    priv marker2: marker::NoCopy
+    ptr: *mut T,
+    end: *mut T,
+    marker: marker::ContravariantLifetime<'a>,
+    marker2: marker::NoCopy
 }
 
 macro_rules! iterator {
@@ -2735,9 +2735,9 @@ pub type RevMutItems<'a, T> = Rev<MutItems<'a, T>>;
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
 pub struct MutSplits<'a, T> {
-    priv v: &'a mut [T],
-    priv pred: 'a |t: &T| -> bool,
-    priv finished: bool
+    v: &'a mut [T],
+    pred: 'a |t: &T| -> bool,
+    finished: bool
 }
 
 impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
@@ -2800,8 +2800,8 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
 /// the vector len is not evenly divided by the chunk size, the last slice of the iteration will be
 /// the remainder.
 pub struct MutChunks<'a, T> {
-    priv v: &'a mut [T],
-    priv chunk_size: uint
+    v: &'a mut [T],
+    chunk_size: uint
 }
 
 impl<'a, T> Iterator<&'a mut [T]> for MutChunks<'a, T> {
@@ -2849,8 +2849,8 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
 
 /// An iterator that moves out of a vector.
 pub struct MoveItems<T> {
-    priv allocation: *mut u8, // the block of memory allocated for the vector
-    priv iter: Items<'static, T>
+    allocation: *mut u8, // the block of memory allocated for the vector
+    iter: Items<'static, T>
 }
 
 impl<T> Iterator<T> for MoveItems<T> {
@@ -2891,7 +2891,7 @@ impl<T> Drop for MoveItems<T> {
 pub type RevMoveItems<T> = Rev<MoveItems<T>>;
 
 impl<A> FromIterator<A> for ~[A] {
-    fn from_iterator<T: Iterator<A>>(mut iterator: T) -> ~[A] {
+    fn from_iter<T: Iterator<A>>(mut iterator: T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
         let mut xs = with_capacity(lower);
         for x in iterator {
@@ -2921,8 +2921,6 @@ mod tests {
     use rand::{Rng, task_rng};
 
     fn square(n: uint) -> uint { n * n }
-
-    fn square_ref(n: &uint) -> uint { square(*n) }
 
     fn is_odd(n: &uint) -> bool { *n % 2u == 1u }
 
@@ -3442,19 +3440,21 @@ mod tests {
 
     #[test]
     fn test_sort() {
+        use realstd::slice::Vector;
+        use realstd::clone::Clone;
         for len in range(4u, 25) {
             for _ in range(0, 100) {
                 let mut v = task_rng().gen_vec::<uint>(len);
                 let mut v1 = v.clone();
 
-                v.sort();
-                assert!(v.windows(2).all(|w| w[0] <= w[1]));
+                v.as_mut_slice().sort();
+                assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
-                v1.sort_by(|a, b| a.cmp(b));
-                assert!(v1.windows(2).all(|w| w[0] <= w[1]));
+                v1.as_mut_slice().sort_by(|a, b| a.cmp(b));
+                assert!(v1.as_slice().windows(2).all(|w| w[0] <= w[1]));
 
-                v1.sort_by(|a, b| b.cmp(a));
-                assert!(v1.windows(2).all(|w| w[0] >= w[1]));
+                v1.as_mut_slice().sort_by(|a, b| b.cmp(a));
+                assert!(v1.as_slice().windows(2).all(|w| w[0] >= w[1]));
             }
         }
 
@@ -4439,7 +4439,7 @@ mod bench {
             unsafe {
                 v.set_len(1024);
             }
-            for i in range(0, 1024) {
+            for i in range(0u, 1024) {
                 v[i] = 0;
             }
         });
@@ -4487,8 +4487,8 @@ mod bench {
     fn sort_random_small(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[u64] = rng.gen_vec(5);
-            v.sort();
+            let mut v = rng.gen_vec::<u64>(5);
+            v.as_mut_slice().sort();
         });
         bh.bytes = 5 * mem::size_of::<u64>() as u64;
     }
@@ -4497,8 +4497,8 @@ mod bench {
     fn sort_random_medium(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[u64] = rng.gen_vec(100);
-            v.sort();
+            let mut v = rng.gen_vec::<u64>(100);
+            v.as_mut_slice().sort();
         });
         bh.bytes = 100 * mem::size_of::<u64>() as u64;
     }
@@ -4507,8 +4507,8 @@ mod bench {
     fn sort_random_large(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[u64] = rng.gen_vec(10000);
-            v.sort();
+            let mut v = rng.gen_vec::<u64>(10000);
+            v.as_mut_slice().sort();
         });
         bh.bytes = 10000 * mem::size_of::<u64>() as u64;
     }
@@ -4528,7 +4528,7 @@ mod bench {
     fn sort_big_random_small(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[BigSortable] = rng.gen_vec(5);
+            let mut v = rng.gen_vec::<BigSortable>(5);
             v.sort();
         });
         bh.bytes = 5 * mem::size_of::<BigSortable>() as u64;
@@ -4538,7 +4538,7 @@ mod bench {
     fn sort_big_random_medium(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[BigSortable] = rng.gen_vec(100);
+            let mut v = rng.gen_vec::<BigSortable>(100);
             v.sort();
         });
         bh.bytes = 100 * mem::size_of::<BigSortable>() as u64;
@@ -4548,7 +4548,7 @@ mod bench {
     fn sort_big_random_large(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[BigSortable] = rng.gen_vec(10000);
+            let mut v = rng.gen_vec::<BigSortable>(10000);
             v.sort();
         });
         bh.bytes = 10000 * mem::size_of::<BigSortable>() as u64;

@@ -59,6 +59,7 @@ use std::u32;
 use std::u64;
 use std::u8;
 use collections::SmallIntMap;
+use syntax::abi;
 use syntax::ast_map;
 use syntax::ast_util::IdVisitingOperation;
 use syntax::attr::{AttrMetaMethods, AttributeMethods};
@@ -135,9 +136,9 @@ pub enum level {
 
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub struct LintSpec {
-    default: level,
-    lint: Lint,
-    desc: &'static str,
+    pub default: level,
+    pub lint: Lint,
+    pub desc: &'static str,
 }
 
 pub type LintDict = HashMap<&'static str, LintSpec>;
@@ -892,7 +893,7 @@ fn check_item_ctypes(cx: &Context, it: &ast::Item) {
     }
 
     match it.node {
-      ast::ItemForeignMod(ref nmod) if !nmod.abis.is_intrinsic() => {
+      ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
         for ni in nmod.items.iter() {
             match ni.node {
                 ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, decl),
@@ -1506,7 +1507,7 @@ fn check_missing_doc_ty_method(cx: &Context, tm: &ast::TypeMethod) {
 
 fn check_missing_doc_struct_field(cx: &Context, sf: &ast::StructField) {
     match sf.node.kind {
-        ast::NamedField(_, vis) if vis != ast::Private =>
+        ast::NamedField(_, vis) if vis == ast::Public =>
             check_missing_doc_attrs(cx,
                                     Some(cx.cur_struct_def_id),
                                     sf.node.attrs.as_slice(),

@@ -28,12 +28,12 @@ use syntax::abi;
 pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
 
 pub struct Archive<'a> {
-    priv sess: &'a Session,
-    priv dst: Path,
+    sess: &'a Session,
+    dst: Path,
 }
 
 pub struct ArchiveRO {
-    priv ptr: ArchiveRef,
+    ptr: ArchiveRef,
 }
 
 fn run_ar(sess: &Session, args: &str, cwd: Option<&Path>,
@@ -85,29 +85,6 @@ impl<'a> Archive<'a> {
     pub fn open(sess: &'a Session, dst: Path) -> Archive<'a> {
         assert!(dst.exists());
         Archive { sess: sess, dst: dst }
-    }
-
-    /// Read a file in the archive
-    pub fn read(&self, file: &str) -> Vec<u8> {
-        // Apparently if "ar p" is used on windows, it generates a corrupt file
-        // which has bad headers and LLVM will immediately choke on it
-        if cfg!(windows) {
-            let loc = TempDir::new("rsar").unwrap();
-            let archive = os::make_absolute(&self.dst);
-            run_ar(self.sess, "x", Some(loc.path()), [&archive,
-                                                      &Path::new(file)]);
-            let result: Vec<u8> =
-                fs::File::open(&loc.path().join(file)).read_to_end()
-                                                      .unwrap()
-                                                      .move_iter()
-                                                      .collect();
-            result
-        } else {
-            run_ar(self.sess,
-                   "p",
-                   None,
-                   [&self.dst, &Path::new(file)]).output.move_iter().collect()
-        }
     }
 
     /// Adds all of the contents of a native library to this archive. This will

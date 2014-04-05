@@ -57,7 +57,6 @@ use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::Disr;
-use std::vec;
 use syntax::abi::{X86, X86_64, Arm, Mips};
 use syntax::ast;
 use syntax::attr;
@@ -83,7 +82,7 @@ pub enum Repr {
      * General-case enums: for each case there is a struct, and they
      * all start with a field for the discriminant.
      */
-    General(IntType, Vec<Struct> ),
+    General(IntType, Vec<Struct>),
     /**
      * Two cases distinguished by a nullable pointer: the case with discriminant
      * `nndiscr` is represented by the struct `nonnull`, where the `ptrfield`th
@@ -95,16 +94,21 @@ pub enum Repr {
      * is represented such that `None` is a null pointer and `Some` is the
      * identity function.
      */
-    NullablePointer{ nonnull: Struct, nndiscr: Disr, ptrfield: uint,
-                     nullfields: Vec<ty::t> }
+    NullablePointer {
+        pub nonnull: Struct,
+        pub nndiscr: Disr,
+        pub ptrfield: uint,
+        pub nullfields: Vec<ty::t>,
+    }
 }
 
 /// For structs, and struct-like parts of anything fancier.
 pub struct Struct {
-    size: u64,
-    align: u64,
-    packed: bool,
-    fields: Vec<ty::t> }
+    pub size: u64,
+    pub align: u64,
+    pub packed: bool,
+    pub fields: Vec<ty::t>,
+}
 
 /**
  * Convenience for `represent_type`.  There should probably be more or
@@ -220,9 +224,7 @@ fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
             let ity = range_to_inttype(cx, hint, &bounds);
             return General(ity, cases.iter().map(|c| {
                 let discr = vec!(ty_of_inttype(ity));
-                mk_struct(cx,
-                          vec::append(discr, c.tys.as_slice()).as_slice(),
-                          false)
+                mk_struct(cx, discr.append(c.tys.as_slice()).as_slice(), false)
             }).collect())
         }
         _ => cx.sess().bug("adt::represent_type called on non-ADT type")
@@ -643,25 +645,6 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
 }
 
 /// Access a field, at a point when the value's case is known.
-pub fn deref_ty(ccx: &CrateContext, r: &Repr) -> ty::t {
-    match *r {
-        CEnum(..) => {
-            ccx.sess().bug("deref of c-like enum")
-        }
-        Univariant(ref st, _) => {
-            *st.fields.get(0)
-        }
-        General(_, ref cases) => {
-            assert!(cases.len() == 1);
-            *cases.get(0).fields.get(0)
-        }
-        NullablePointer{ .. } => {
-            ccx.sess().bug("deref of nullable ptr")
-        }
-    }
-}
-
-/// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr,
                        ix: uint) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
@@ -753,12 +736,8 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
             let contents = build_const_struct(ccx,
                                               case,
-                                              vec::append(
-                                                  vec!(lldiscr),
-                                                  vals).as_slice());
-            C_struct(ccx, vec::append(
-                        contents,
-                        &[padding(ccx, max_sz - case.size)]).as_slice(),
+                                              (vec!(lldiscr)).append(vals).as_slice());
+            C_struct(ccx, contents.append([padding(ccx, max_sz - case.size)]).as_slice(),
                      false)
         }
         Univariant(ref st, _dro) => {
@@ -896,13 +875,5 @@ fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: uint)
         }
         ix = ix - 1;
         real_ix = real_ix + 1;
-    }
-}
-
-/// Is it safe to bitcast a value to the one field of its one variant?
-pub fn is_newtypeish(r: &Repr) -> bool {
-    match *r {
-        Univariant(ref st, false) => st.fields.len() == 1,
-        _ => false
     }
 }

@@ -411,23 +411,23 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
                     // If reached left end of number, have to
                     // insert additional digit:
                     if i < 0
-                    || buf[i] == '-' as u8
-                    || buf[i] == '+' as u8 {
+                    || buf[i as uint] == '-' as u8
+                    || buf[i as uint] == '+' as u8 {
                         buf.insert((i + 1) as uint, value2ascii(1));
                         break;
                     }
 
                     // Skip the '.'
-                    if buf[i] == '.' as u8 { i -= 1; continue; }
+                    if buf[i as uint] == '.' as u8 { i -= 1; continue; }
 
                     // Either increment the digit,
                     // or set to 0 if max and carry the 1.
-                    let current_digit = ascii2value(buf[i]);
+                    let current_digit = ascii2value(buf[i as uint]);
                     if current_digit < (radix - 1) {
-                        buf[i] = value2ascii(current_digit+1);
+                        buf[i as uint] = value2ascii(current_digit+1);
                         break;
                     } else {
-                        buf[i] = value2ascii(0);
+                        buf[i as uint] = value2ascii(0);
                         i -= 1;
                     }
                 }
@@ -821,31 +821,31 @@ mod bench {
 
         #[bench]
         fn to_str_bin(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<uint>().to_str_radix(2); })
         }
 
         #[bench]
         fn to_str_oct(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<uint>().to_str_radix(8); })
         }
 
         #[bench]
         fn to_str_dec(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<uint>().to_str_radix(10); })
         }
 
         #[bench]
         fn to_str_hex(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<uint>().to_str_radix(16); })
         }
 
         #[bench]
         fn to_str_base_36(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<uint>().to_str_radix(36); })
         }
     }
@@ -857,31 +857,31 @@ mod bench {
 
         #[bench]
         fn to_str_bin(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<int>().to_str_radix(2); })
         }
 
         #[bench]
         fn to_str_oct(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<int>().to_str_radix(8); })
         }
 
         #[bench]
         fn to_str_dec(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<int>().to_str_radix(10); })
         }
 
         #[bench]
         fn to_str_hex(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<int>().to_str_radix(16); })
         }
 
         #[bench]
         fn to_str_base_36(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { rng.gen::<int>().to_str_radix(36); })
         }
     }
@@ -893,7 +893,7 @@ mod bench {
 
         #[bench]
         fn float_to_str(bh: &mut BenchHarness) {
-            let mut rng = XorShiftRng::new();
+            let mut rng = XorShiftRng::new().unwrap();
             bh.iter(|| { f64::to_str(rng.gen()); })
         }
     }

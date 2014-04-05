@@ -11,7 +11,6 @@
 #![macro_escape]
 
 use abi;
-use abi::AbiSet;
 use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
 use ast::{BareFnTy, ClosureTy};
 use ast::{RegionTyParamBound, TraitTyParamBound};
@@ -78,10 +77,8 @@ use parse::{new_sub_parser_from_file, ParseSess};
 use owned_slice::OwnedSlice;
 
 use collections::HashSet;
-use std::kinds::marker;
 use std::mem::replace;
 use std::rc::Rc;
-use std::vec;
 
 #[allow(non_camel_case_types)]
 #[deriving(Eq)]
@@ -114,8 +111,8 @@ pub enum PathParsingMode {
 
 /// A path paired with optional type bounds.
 pub struct PathAndBounds {
-    path: ast::Path,
-    bounds: Option<OwnedSlice<TyParamBound>>,
+    pub path: ast::Path,
+    pub bounds: Option<OwnedSlice<TyParamBound>>,
 }
 
 enum ItemOrViewItem {
@@ -262,7 +259,7 @@ fn maybe_append(lhs: Vec<Attribute> , rhs: Option<Vec<Attribute> >)
              -> Vec<Attribute> {
     match rhs {
         None => lhs,
-        Some(ref attrs) => vec::append(lhs, attrs.as_slice())
+        Some(ref attrs) => lhs.append(attrs.as_slice())
     }
 }
 
@@ -307,38 +304,35 @@ pub fn Parser<'a>(sess: &'a ParseSess, cfg: ast::CrateConfig, mut rdr: ~Reader:)
         obsolete_set: HashSet::new(),
         mod_path_stack: Vec::new(),
         open_braces: Vec::new(),
-        nocopy: marker::NoCopy
     }
 }
 
 pub struct Parser<'a> {
-    sess: &'a ParseSess,
-    cfg: CrateConfig,
+    pub sess: &'a ParseSess,
     // the current token:
-    token: token::Token,
+    pub token: token::Token,
     // the span of the current token:
-    span: Span,
+    pub span: Span,
     // the span of the prior token:
-    last_span: Span,
+    pub last_span: Span,
+    pub cfg: CrateConfig,
     // the previous token or None (only stashed sometimes).
-    last_token: Option<~token::Token>,
-    buffer: [TokenAndSpan, ..4],
-    buffer_start: int,
-    buffer_end: int,
-    tokens_consumed: uint,
-    restriction: restriction,
-    quote_depth: uint, // not (yet) related to the quasiquoter
-    reader: ~Reader:,
-    interner: Rc<token::IdentInterner>,
+    pub last_token: Option<~token::Token>,
+    pub buffer: [TokenAndSpan, ..4],
+    pub buffer_start: int,
+    pub buffer_end: int,
+    pub tokens_consumed: uint,
+    pub restriction: restriction,
+    pub quote_depth: uint, // not (yet) related to the quasiquoter
+    pub reader: ~Reader:,
+    pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
-    obsolete_set: HashSet<ObsoleteSyntax>,
+    pub obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
-    mod_path_stack: Vec<InternedString> ,
+    pub mod_path_stack: Vec<InternedString>,
     /// Stack of spans of open delimiters. Used for error message.
-    open_braces: Vec<Span> ,
-    /* do not copy the parser; its state is tied to outside state */
-    priv nocopy: marker::NoCopy
+    pub open_braces: Vec<Span>,
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
@@ -398,10 +392,7 @@ impl<'a> Parser<'a> {
         } else if inedible.contains(&self.token) {
             // leave it in the input
         } else {
-            let expected = vec::append(edible.iter()
-                                                .map(|x| (*x).clone())
-                                                .collect(),
-                                          inedible);
+            let expected = edible.iter().map(|x| (*x).clone()).collect::<Vec<_>>().append(inedible);
             let expect = tokens_to_str(expected.as_slice());
             let actual = self.this_token_to_str();
             self.fatal(
@@ -440,10 +431,8 @@ impl<'a> Parser<'a> {
         match e.node {
             ExprPath(..) => {
                 // might be unit-struct construction; check for recoverableinput error.
-                let expected = vec::append(edible.iter()
-                                                    .map(|x| (*x).clone())
-                                                    .collect(),
-                                              inedible);
+                let expected = edible.iter().map(|x| (*x).clone()).collect::<Vec<_>>()
+                              .append(inedible);
                 self.check_for_erroneous_unit_struct_expecting(
                     expected.as_slice());
             }
@@ -463,10 +452,8 @@ impl<'a> Parser<'a> {
         debug!("commit_stmt {:?}", s);
         let _s = s; // unused, but future checks might want to inspect `s`.
         if self.last_token.as_ref().map_or(false, |t| is_ident_or_path(*t)) {
-            let expected = vec::append(edible.iter()
-                                                .map(|x| (*x).clone())
-                                                .collect(),
-                                          inedible.as_slice());
+            let expected = edible.iter().map(|x| (*x).clone()).collect::<Vec<_>>()
+                           .append(inedible.as_slice());
             self.check_for_erroneous_unit_struct_expecting(
                 expected.as_slice());
         }
@@ -792,10 +779,10 @@ impl<'a> Parser<'a> {
                       -> R {
         let dist = distance as int;
         while self.buffer_length() < dist {
-            self.buffer[self.buffer_end] = self.reader.next_token();
+            self.buffer[self.buffer_end as uint] = self.reader.next_token();
             self.buffer_end = (self.buffer_end + 1) & 3;
         }
-        f(&self.buffer[(self.buffer_start + dist - 1) & 3].tok)
+        f(&self.buffer[((self.buffer_start + dist - 1) & 3) as uint].tok)
     }
     pub fn fatal(&mut self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(self.span, m)
@@ -885,17 +872,17 @@ impl<'a> Parser<'a> {
 
         */
 
-        let abis = if self.eat_keyword(keywords::Extern) {
-            self.parse_opt_abis().unwrap_or(AbiSet::C())
+        let abi = if self.eat_keyword(keywords::Extern) {
+            self.parse_opt_abi().unwrap_or(abi::C)
         } else {
-            AbiSet::Rust()
+            abi::Rust
         };
 
         let purity = self.parse_unsafety();
         self.expect_keyword(keywords::Fn);
         let (decl, lifetimes) = self.parse_ty_fn_decl(true);
         return TyBareFn(@BareFnTy {
-            abis: abis,
+            abi: abi,
             purity: purity,
             lifetimes: lifetimes,
             decl: decl
@@ -1107,7 +1094,7 @@ impl<'a> Parser<'a> {
                 debug!("parse_trait_methods(): parsing provided method");
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block();
-                let attrs = vec::append(attrs, inner_attrs.as_slice());
+                let attrs = attrs.append(inner_attrs.as_slice());
                 Provided(@ast::Method {
                     ident: ident,
                     attrs: attrs,
@@ -1832,12 +1819,11 @@ impl<'a> Parser<'a> {
             return self.parse_block_expr(lo, UnsafeBlock(ast::UserProvided));
         } else if self.token == token::LBRACKET {
             self.bump();
-            let mutbl = MutImmutable;
 
             if self.token == token::RBRACKET {
                 // Empty vector.
                 self.bump();
-                ex = ExprVec(Vec::new(), mutbl);
+                ex = ExprVec(Vec::new());
             } else {
                 // Nonempty vector.
                 let first_expr = self.parse_expr();
@@ -1848,7 +1834,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let count = self.parse_expr();
                     self.expect(&token::RBRACKET);
-                    ex = ExprRepeat(first_expr, count, mutbl);
+                    ex = ExprRepeat(first_expr, count);
                 } else if self.token == token::COMMA {
                     // Vector with two or more elements.
                     self.bump();
@@ -1859,11 +1845,11 @@ impl<'a> Parser<'a> {
                     );
                     let mut exprs = vec!(first_expr);
                     exprs.push_all_move(remaining_exprs);
-                    ex = ExprVec(exprs, mutbl);
+                    ex = ExprVec(exprs);
                 } else {
                     // Vector with one element.
                     self.expect(&token::RBRACKET);
-                    ex = ExprVec(vec!(first_expr), mutbl);
+                    ex = ExprVec(vec!(first_expr));
                 }
             }
             hi = self.last_span.hi;
@@ -1893,12 +1879,9 @@ impl<'a> Parser<'a> {
             if self.token == token::NOT {
                 // MACRO INVOCATION expression
                 self.bump();
-                match self.token {
-                    token::LPAREN | token::LBRACE => {}
-                    _ => self.fatal("expected open delimiter")
-                };
 
-                let ket = token::flip_delimiter(&self.token);
+                let ket = token::close_delimiter_for(&self.token)
+                                .unwrap_or_else(|| self.fatal("expected open delimiter"));
                 self.bump();
 
                 let tts = self.parse_seq_to_end(&ket,
@@ -2121,8 +2104,8 @@ impl<'a> Parser<'a> {
             TTTok(p.span, p.bump_and_get())
         }
 
-        match self.token {
-            token::EOF => {
+        match (&self.token, token::close_delimiter_for(&self.token)) {
+            (&token::EOF, _) => {
                 let open_braces = self.open_braces.clone();
                 for sp in open_braces.iter() {
                     self.span_note(*sp, "Did you mean to close this delimiter?");
@@ -2131,9 +2114,7 @@ impl<'a> Parser<'a> {
                 // if we give it one
                 self.fatal("this file contains an un-closed delimiter ");
             }
-            token::LPAREN | token::LBRACE | token::LBRACKET => {
-                let close_delim = token::flip_delimiter(&self.token);
-
+            (_, Some(close_delim)) => {
                 // Parse the open delimiter.
                 self.open_braces.push(self.span);
                 let mut result = vec!(parse_any_tt_tok(self));
@@ -2169,13 +2150,12 @@ impl<'a> Parser<'a> {
         // the interpolation of Matcher's
         maybe_whole!(self, NtMatchers);
         let mut name_idx = 0u;
-        match self.token {
-            token::LBRACE | token::LPAREN | token::LBRACKET => {
-                let other_delimiter = token::flip_delimiter(&self.token);
+        match token::close_delimiter_for(&self.token) {
+            Some(other_delimiter) => {
                 self.bump();
                 self.parse_matcher_subseq_upto(&mut name_idx, &other_delimiter)
             }
-            _ => self.fatal("expected open delimiter")
+            None => self.fatal("expected open delimiter")
         }
     }
 
@@ -3150,7 +3130,7 @@ impl<'a> Parser<'a> {
             let pth = self.parse_path(NoTypesAllowed).path;
             self.bump();
 
-            let id = if self.token == token::LPAREN || self.token == token::LBRACE {
+            let id = if token::close_delimiter_for(&self.token).is_some() {
                 token::special_idents::invalid // no special identifier
             } else {
                 self.parse_ident()
@@ -3159,10 +3139,9 @@ impl<'a> Parser<'a> {
             // check that we're pointing at delimiters (need to check
             // again after the `if`, because of `parse_ident`
             // consuming more tokens).
-            let (bra, ket) = match self.token {
-                token::LPAREN => (token::LPAREN, token::RPAREN),
-                token::LBRACE => (token::LBRACE, token::RBRACE),
-                _ => {
+            let (bra, ket) = match token::close_delimiter_for(&self.token) {
+                Some(ket) => (self.token.clone(), ket),
+                None      => {
                     // we only expect an ident if we didn't parse one
                     // above.
                     let ident_str = if id == token::special_idents::invalid {
@@ -3789,11 +3768,11 @@ impl<'a> Parser<'a> {
     }
 
     // parse an item-position function declaration.
-    fn parse_item_fn(&mut self, purity: Purity, abis: AbiSet) -> ItemInfo {
+    fn parse_item_fn(&mut self, purity: Purity, abi: abi::Abi) -> ItemInfo {
         let (ident, generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(false);
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
-        (ident, ItemFn(decl, purity, abis, generics, body), Some(inner_attrs))
+        (ident, ItemFn(decl, purity, abi, generics, body), Some(inner_attrs))
     }
 
     // parse a method in a trait impl, starting with `attrs` attributes.
@@ -3816,7 +3795,7 @@ impl<'a> Parser<'a> {
 
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         let hi = body.span.hi;
-        let attrs = vec::append(attrs, inner_attrs.as_slice());
+        let attrs = attrs.append(inner_attrs.as_slice());
         @ast::Method {
             ident: ident,
             attrs: attrs,
@@ -4048,8 +4027,7 @@ impl<'a> Parser<'a> {
         while self.token != term {
             let mut attrs = self.parse_outer_attributes();
             if first {
-                attrs = vec::append(attrs_remaining.clone(),
-                                       attrs.as_slice());
+                attrs = attrs_remaining.clone().append(attrs.as_slice());
                 first = false;
             }
             debug!("parse_mod_items: parse_item_or_view_item(attrs={:?})",
@@ -4192,7 +4170,7 @@ impl<'a> Parser<'a> {
                                      &path,
                                      id_sp);
         let (inner, next) = p0.parse_inner_attrs_and_next();
-        let mod_attrs = vec::append(outer_attrs, inner.as_slice());
+        let mod_attrs = outer_attrs.append(inner.as_slice());
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         self.sess.included_mod_stack.borrow_mut().pop();
@@ -4257,7 +4235,7 @@ impl<'a> Parser<'a> {
     // at this point, this is essentially a wrapper for
     // parse_foreign_items.
     fn parse_foreign_mod_items(&mut self,
-                               abis: AbiSet,
+                               abi: abi::Abi,
                                first_item_attrs: Vec<Attribute> )
                                -> ForeignMod {
         let ParsedItemsAndViewItems {
@@ -4272,7 +4250,7 @@ impl<'a> Parser<'a> {
         }
         assert!(self.token == token::RBRACE);
         ast::ForeignMod {
-            abis: abis,
+            abi: abi,
             view_items: view_items,
             items: foreign_items
         }
@@ -4330,17 +4308,17 @@ impl<'a> Parser<'a> {
     /// extern {}
     fn parse_item_foreign_mod(&mut self,
                               lo: BytePos,
-                              opt_abis: Option<AbiSet>,
+                              opt_abi: Option<abi::Abi>,
                               visibility: Visibility,
                               attrs: Vec<Attribute> )
                               -> ItemOrViewItem {
 
         self.expect(&token::LBRACE);
 
-        let abis = opt_abis.unwrap_or(AbiSet::C());
+        let abi = opt_abi.unwrap_or(abi::C);
 
         let (inner, next) = self.parse_inner_attrs_and_next();
-        let m = self.parse_foreign_mod_items(abis, next);
+        let m = self.parse_foreign_mod_items(abi, next);
         self.expect(&token::RBRACE);
 
         let item = self.mk_item(lo,
@@ -4460,45 +4438,29 @@ impl<'a> Parser<'a> {
 
     // Parses a string as an ABI spec on an extern type or module. Consumes
     // the `extern` keyword, if one is found.
-    fn parse_opt_abis(&mut self) -> Option<AbiSet> {
+    fn parse_opt_abi(&mut self) -> Option<abi::Abi> {
         match self.token {
-            token::LIT_STR(s)
-            | token::LIT_STR_RAW(s, _) => {
+            token::LIT_STR(s) | token::LIT_STR_RAW(s, _) => {
                 self.bump();
                 let identifier_string = token::get_ident(s);
                 let the_string = identifier_string.get();
-                let mut abis = AbiSet::empty();
-                for word in the_string.words() {
-                    match abi::lookup(word) {
-                        Some(abi) => {
-                            if abis.contains(abi) {
-                                self.span_err(
-                                    self.span,
-                                    format!("ABI `{}` appears twice",
-                                         word));
-                            } else {
-                                abis.add(abi);
-                            }
-                        }
-
-                        None => {
-                            self.span_err(
-                                self.span,
-                                format!("illegal ABI: \
-                                      expected one of [{}], \
-                                      found `{}`",
-                                     abi::all_names().connect(", "),
-                                     word));
-                        }
-                     }
-                 }
-                Some(abis)
+                match abi::lookup(the_string) {
+                    Some(abi) => Some(abi),
+                    None => {
+                        self.span_err(
+                            self.span,
+                            format!("illegal ABI: \
+                                  expected one of [{}], \
+                                  found `{}`",
+                                 abi::all_names().connect(", "),
+                                 the_string));
+                        None
+                    }
+                }
             }
 
-            _ => {
-                None
-             }
-         }
+            _ => None,
+        }
     }
 
     // parse one of the items or view items allowed by the
@@ -4512,7 +4474,7 @@ impl<'a> Parser<'a> {
         match self.token {
             INTERPOLATED(token::NtItem(item)) => {
                 self.bump();
-                let new_attrs = vec::append(attrs, item.attrs.as_slice());
+                let new_attrs = attrs.append(item.attrs.as_slice());
                 return IoviItem(@Item {
                     attrs: new_attrs,
                     ..(*item).clone()
@@ -4551,13 +4513,13 @@ impl<'a> Parser<'a> {
                 return self.parse_item_extern_crate(lo, visibility, attrs);
             }
 
-            let opt_abis = self.parse_opt_abis();
+            let opt_abi = self.parse_opt_abi();
 
             if self.eat_keyword(keywords::Fn) {
                 // EXTERN FUNCTION ITEM
-                let abis = opt_abis.unwrap_or(AbiSet::C());
+                let abi = opt_abi.unwrap_or(abi::C);
                 let (ident, item_, extra_attrs) =
-                    self.parse_item_fn(ExternFn, abis);
+                    self.parse_item_fn(ExternFn, abi);
                 let item = self.mk_item(lo,
                                         self.last_span.hi,
                                         ident,
@@ -4566,7 +4528,7 @@ impl<'a> Parser<'a> {
                                         maybe_append(attrs, extra_attrs));
                 return IoviItem(item);
             } else if self.token == token::LBRACE {
-                return self.parse_item_foreign_mod(lo, opt_abis, visibility, attrs);
+                return self.parse_item_foreign_mod(lo, opt_abi, visibility, attrs);
             }
 
             let token_str = self.this_token_to_str();
@@ -4592,7 +4554,7 @@ impl<'a> Parser<'a> {
             // FUNCTION ITEM
             self.bump();
             let (ident, item_, extra_attrs) =
-                self.parse_item_fn(ImpureFn, AbiSet::Rust());
+                self.parse_item_fn(ImpureFn, abi::Rust);
             let item = self.mk_item(lo,
                                     self.last_span.hi,
                                     ident,
@@ -4607,7 +4569,7 @@ impl<'a> Parser<'a> {
             self.bump();
             self.expect_keyword(keywords::Fn);
             let (ident, item_, extra_attrs) =
-                self.parse_item_fn(UnsafeFn, AbiSet::Rust());
+                self.parse_item_fn(UnsafeFn, abi::Rust);
             let item = self.mk_item(lo,
                                     self.last_span.hi,
                                     ident,
@@ -4737,15 +4699,14 @@ impl<'a> Parser<'a> {
                 token::special_idents::invalid // no special identifier
             };
             // eat a matched-delimiter token tree:
-            let tts = match self.token {
-                token::LPAREN | token::LBRACE => {
-                    let ket = token::flip_delimiter(&self.token);
+            let tts = match token::close_delimiter_for(&self.token) {
+                Some(ket) => {
                     self.bump();
                     self.parse_seq_to_end(&ket,
                                           seq_sep_none(),
                                           |p| p.parse_token_tree())
                 }
-                _ => self.fatal("expected open delimiter")
+                None => self.fatal("expected open delimiter")
             };
             // single-variant-enum... :
             let m = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
@@ -4940,9 +4901,7 @@ impl<'a> Parser<'a> {
                                   mut extern_mod_allowed: bool,
                                   macros_allowed: bool)
                                   -> ParsedItemsAndViewItems {
-        let mut attrs = vec::append(first_item_attrs,
-                                       self.parse_outer_attributes()
-                                           .as_slice());
+        let mut attrs = first_item_attrs.append(self.parse_outer_attributes().as_slice());
         // First, parse view items.
         let mut view_items : Vec<ast::ViewItem> = Vec::new();
         let mut items = Vec::new();
@@ -5022,9 +4981,7 @@ impl<'a> Parser<'a> {
     fn parse_foreign_items(&mut self, first_item_attrs: Vec<Attribute> ,
                            macros_allowed: bool)
         -> ParsedItemsAndViewItems {
-        let mut attrs = vec::append(first_item_attrs,
-                                       self.parse_outer_attributes()
-                                           .as_slice());
+        let mut attrs = first_item_attrs.append(self.parse_outer_attributes().as_slice());
         let mut foreign_items = Vec::new();
         loop {
             match self.parse_foreign_item(attrs, macros_allowed) {

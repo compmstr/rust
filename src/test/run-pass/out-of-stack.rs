@@ -10,13 +10,16 @@
 
 // ignore-fast
 
-#[feature(asm)];
+#![feature(asm)]
 
 use std::io::Process;
 use std::os;
 use std::str;
 
 // lifted from the test module
+// Inlining to avoid llvm turning the recursive functions into tail calls,
+// which doesn't consume stack.
+#[inline(always)]
 pub fn black_box<T>(dummy: T) { unsafe { asm!("" : : "r"(&dummy)) } }
 
 fn silent_recurse() {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_id = "rustdoc#0.10-pre"]
+#![crate_id = "rustdoc#0.11-pre"]
 #![desc = "rustdoc, the Rust documentation extractor"]
 #![license = "MIT/ASL2"]
 #![crate_type = "dylib"]
@@ -168,6 +168,7 @@ pub fn main_args(args: &[~str]) -> int {
     let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
 
     let output = matches.opt_str("o").map(|s| Path::new(s));
+    let cfgs = matches.opt_strs("cfg");
 
     match (should_test, markdown_input) {
         (true, true) => {
@@ -175,7 +176,8 @@ pub fn main_args(args: &[~str]) -> int {
                                   libs,
                                   test_args.move_iter().collect())
         }
-        (true, false) => return test::run(input, libs, test_args),
+        (true, false) => return test::run(input, cfgs.move_iter().collect(),
+                                          libs, test_args),
 
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
                                                  &matches),

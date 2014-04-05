@@ -18,8 +18,8 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 #[unsafe_no_drop_flag] // data is set to null on destruction
 pub struct OwnedSlice<T> {
     /// null iff len == 0
-    priv data: *mut T,
-    priv len: uint,
+    data: *mut T,
+    len: uint,
 }
 
 #[unsafe_destructor]
@@ -126,7 +126,7 @@ impl<T> Container for OwnedSlice<T> {
 }
 
 impl<T> FromIterator<T> for OwnedSlice<T> {
-    fn from_iterator<I: Iterator<T>>(mut iter: I) -> OwnedSlice<T> {
+    fn from_iter<I: Iterator<T>>(mut iter: I) -> OwnedSlice<T> {
         OwnedSlice::from_vec(iter.collect())
     }
 }

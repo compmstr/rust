@@ -76,7 +76,7 @@
 //! }
 //! ~~~
 
-#![crate_id = "getopts#0.10-pre"]
+#![crate_id = "getopts#0.11-pre"]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
@@ -130,13 +130,13 @@ pub enum Occur {
 #[deriving(Clone, Eq)]
 pub struct Opt {
     /// Name of the option
-    name: Name,
+    pub name: Name,
     /// Whether it has an argument
-    hasarg: HasArg,
+    pub hasarg: HasArg,
     /// How often it can occur
-    occur: Occur,
+    pub occur: Occur,
     /// Which options it aliases
-    priv aliases: Vec<Opt> ,
+    pub aliases: Vec<Opt> ,
 }
 
 /// One group of options, e.g., both -h and --help, along with
@@ -144,17 +144,17 @@ pub struct Opt {
 #[deriving(Clone, Eq)]
 pub struct OptGroup {
     /// Short Name of the `OptGroup`
-    short_name: ~str,
+    pub short_name: ~str,
     /// Long Name of the `OptGroup`
-    long_name: ~str,
+    pub long_name: ~str,
     /// Hint
-    hint: ~str,
+    pub hint: ~str,
     /// Description
-    desc: ~str,
+    pub desc: ~str,
     /// Whether it has an argument
-    hasarg: HasArg,
+    pub hasarg: HasArg,
     /// How often it can occur
-    occur: Occur
+    pub occur: Occur
 }
 
 /// Describes wether an option is given at all or has a value.
@@ -169,11 +169,12 @@ enum Optval {
 #[deriving(Clone, Eq)]
 pub struct Matches {
     /// Options that matched
-    priv opts: Vec<Opt> ,
+    opts: Vec<Opt> ,
     /// Values of the Options that matched
-    priv vals: Vec<Vec<Optval> > ,
+    vals: Vec<Vec<Optval> > ,
     /// Free string fragments
-    free: Vec<~str> }
+    pub free: Vec<~str>,
+}
 
 /// The type returned when the command line does not conform to the
 /// expected format. Call the `to_err_msg` method to retrieve the
